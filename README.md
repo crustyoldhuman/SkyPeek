@@ -52,6 +52,8 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 ## Installation & Removal
 
 ### Installation
+
+To install via Microsoft Store, visit this URL: https://apps.microsoft.com/detail/9PK6CB35BSGD
 *Note: Installation instructions do not apply to Microsoft Store installations*
 
 1. Double-click SkyPeek_1.0.0_Setup.exe, or whatever version you're installing.
