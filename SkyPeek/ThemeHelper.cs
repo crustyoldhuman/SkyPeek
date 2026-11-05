@@ -37,7 +37,13 @@ namespace SkyPeek
 			{
 				bool isLightTheme = Wpf.Ui.Appearance.SystemThemeManager.GetCachedSystemTheme() == Wpf.Ui.Appearance.SystemTheme.Light;
 				bool isSystemLightTheme = isLightTheme;
-				bool showBorderColor = true;
+				bool showBorderColor = false;
+				try
+				{
+					object? colorPrevalence = Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\DWM", "ColorPrevalence", 0);
+					showBorderColor = colorPrevalence is int cp && cp == 1;
+				}
+				catch { }
 
 				if (AppConfig.Current.ThemePreference == "Light") isLightTheme = true;
 				else if (AppConfig.Current.ThemePreference == "Dark") isLightTheme = false;
@@ -316,7 +322,13 @@ namespace SkyPeek
 			try
 			{
 				bool isLightTheme = Wpf.Ui.Appearance.SystemThemeManager.GetCachedSystemTheme() == Wpf.Ui.Appearance.SystemTheme.Light;
-				bool showBorderColor = true;
+				bool showBorderColor = false;
+				try
+				{
+					object? colorPrevalence = Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\DWM", "ColorPrevalence", 0);
+					showBorderColor = colorPrevalence is int cp && cp == 1;
+				}
+				catch { }
 
 				if (AppConfig.Current.ThemePreference == "Light") isLightTheme = true;
 				else if (AppConfig.Current.ThemePreference == "Dark") isLightTheme = false;
