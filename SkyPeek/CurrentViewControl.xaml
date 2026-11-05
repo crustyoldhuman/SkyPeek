@@ -1,0 +1,586 @@
+﻿<UserControl x:Class="SkyPeek.CurrentViewControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:SkyPeek"
+             xmlns:lottie="clr-namespace:LottieSharp.WPF;assembly=LottieSharp"
+             mc:Ignorable="d">
+	<UserControl.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceDictionary Source="SlideoutResources.xaml"/>
+			</ResourceDictionary.MergedDictionaries>
+			<local:LottieToStaticConverter x:Key="LottieToStaticConverter" />
+		</ResourceDictionary>
+	</UserControl.Resources>
+	<Grid>
+		<Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" Cursor="Hand" ToolTip="Live radar" AutomationProperties.Name="Live Radar Map" AutomationProperties.HelpText="Opens the interactive radar view" MouseLeftButtonUp="RadarIcon_MouseLeftButtonUp" Padding="5" Panel.ZIndex="10" Margin="0,-5,-5,0" Focusable="True" FocusVisualStyle="{DynamicResource GlobalFocusVisual}" CornerRadius="6">
+			<Path Data="M 130.86552,148.5 A 25.865519,25.865519 0 0 1 105,174.36552 25.865519,25.865519 0 0 1 79.134481,148.5 25.865519,25.865519 0 0 1 105,122.63448 25.865519,25.865519 0 0 1 130.86552,148.5 Z m 23.37564,0 A 49.241155,49.241155 0 0 1 105,197.74116 49.241155,49.241155 0 0 1 55.758843,148.5 49.241155,49.241155 0 0 1 105,99.25884 49.241155,49.241155 0 0 1 154.24116,148.5 Z M 31.490135,148.5 H 178.50987 M 105,74.990133 V 222.00987 M 178.50987,148.5 A 73.509866,73.509866 0 0 1 105,222.00987 73.509866,73.509866 0 0 1 31.490135,148.5 73.509866,73.509866 0 0 1 105,74.990133 73.509866,73.509866 0 0 1 178.50987,148.5 Z" 
+                  StrokeThickness="1.25" Fill="Transparent" Width="18" Height="18" Stretch="Uniform" Style="{StaticResource HoverGlowPath}">
+			</Path>
+		</Border>
+
+		<Grid x:Name="PrimaryAlertContainer" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-6,-10,0,0" Panel.ZIndex="10" Visibility="{Binding AlertState.AlertIconBorderVisibility}">
+			<Grid.Style>
+				<Style TargetType="Grid">
+					<Style.Triggers>
+						<Trigger Property="Visibility" Value="Visible">
+							<Trigger.EnterActions>
+								<BeginStoryboard x:Name="AlertFadeIn">
+									<Storyboard>
+										<DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.0" To="1.0" Duration="0:0:0.25"/>
+									</Storyboard>
+								</BeginStoryboard>
+							</Trigger.EnterActions>
+							<Trigger.ExitActions>
+								<RemoveStoryboard BeginStoryboardName="AlertFadeIn"/>
+							</Trigger.ExitActions>
+						</Trigger>
+						<DataTrigger Binding="{Binding AlertState.HasNewAlerts}" Value="True">
+							<DataTrigger.EnterActions>
+								<BeginStoryboard x:Name="NewAlertPulse">
+									<Storyboard RepeatBehavior="Forever" AutoReverse="True">
+										<DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.4" To="1.0" Duration="0:0:0.8">
+											<DoubleAnimation.EasingFunction>
+												<SineEase EasingMode="EaseInOut"/>
+											</DoubleAnimation.EasingFunction>
+										</DoubleAnimation>
+									</Storyboard>
+								</BeginStoryboard>
+							</DataTrigger.EnterActions>
+							<DataTrigger.ExitActions>
+								<RemoveStoryboard BeginStoryboardName="NewAlertPulse"/>
+							</DataTrigger.ExitActions>
+						</DataTrigger>
+					</Style.Triggers>
+				</Style>
+			</Grid.Style>
+			<Border x:Name="AlertIconBorder" Background="Transparent" Cursor="Hand" AutomationProperties.Name="{Binding AlertState.CurrentAlerts.Count, StringFormat='{}Active alerts: {0}'}" AutomationProperties.HelpText="Click to view alert details" MouseLeftButtonUp="AlertIconBorder_MouseLeftButtonUp" Padding="4" Margin="0" CornerRadius="4" Focusable="True" FocusVisualStyle="{x:Null}">
+				<Border.Style>
+					<Style TargetType="Border">
+						<Setter Property="BorderThickness" Value="2"/>
+						<Setter Property="BorderBrush" Value="Transparent"/>
+						<Setter Property="SnapsToDevicePixels" Value="True"/>
+						<Setter Property="UseLayoutRounding" Value="True"/>
+						<Style.Triggers>
+							<DataTrigger Binding="{Binding IsAlertIconSelected}" Value="True">
+								<Setter Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}"/>
+							</DataTrigger>
+						</Style.Triggers>
+					</Style>
+				</Border.Style>
+				<Border.ToolTip>
+					<ToolTip>
+						<TextBlock>
+							<Run Text="{Binding AlertState.NewAlertCount, Mode=OneWay, StringFormat='New Alerts: {0}'}"/>
+                            <LineBreak/>
+							<Run Text="{Binding AlertState.CurrentAlerts.Count, Mode=OneWay, StringFormat='Active Alerts: {0}'}"/>
+						</TextBlock>
+					</ToolTip>
+				</Border.ToolTip>
+				<Grid>
+					<Path x:Name="AlertIconPath" HorizontalAlignment="Left" Data="M 12,2 L 22,20 H 2 Z M 12,8 V 14 M 12,17 V 17.1" Stroke="{DynamicResource PrimaryTextBrush}" StrokeThickness="1.25" Fill="Transparent" Width="20" Height="20" Stretch="Uniform" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round">
+						<Path.Style>
+							<Style TargetType="Path">
+								<Setter Property="Effect" Value="{DynamicResource SoftTextShadowEffect}"/>
+								<Style.Triggers>
+									<MultiDataTrigger>
+										<MultiDataTrigger.Conditions>
+											<Condition Binding="{Binding IsMouseOver, ElementName=AlertIconBorder}" Value="True"/>
+											<Condition Binding="{Binding IsAlertIconSelected}" Value="False"/>
+										</MultiDataTrigger.Conditions>
+										<Setter Property="Effect" Value="{DynamicResource TabHoverGlowEffect}"/>
+									</MultiDataTrigger>
+								</Style.Triggers>
+							</Style>
+						</Path.Style>
+					</Path>
+					<TextBlock Text="{Binding AlertState.NewAlertCount}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="20,0,0,14" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="11" FontWeight="SemiBold" IsHitTestVisible="False">
+						<TextBlock.Style>
+							<Style TargetType="TextBlock" BasedOn="{StaticResource BaseShadowText}">
+								<Setter Property="Visibility" Value="Hidden"/>
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding AlertState.HasNewAlerts}" Value="True">
+										<Setter Property="Visibility" Value="Visible"/>
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</TextBlock.Style>
+					</TextBlock>
+				</Grid>
+			</Border>
+		</Grid>
+
+		<StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
+			<Grid HorizontalAlignment="Center" Margin="0,-10,0,0">
+				<ComboBox x:Name="LocationComboBox" x:FieldModifier="public" Background="Transparent" Foreground="{DynamicResource PrimaryTextBrush}" BorderThickness="0" Padding="0" ToolTip="Location selection &amp; management" AutomationProperties.Name="Location Selection" SelectionChanged="LocationComboBox_SelectionChanged" DropDownOpened="LocationComboBox_DropDownOpened" DropDownClosed="LocationComboBox_DropDownClosed" ScrollViewer.CanContentScroll="False" SelectedValuePath="DisplayName" SelectedValue="{Binding SelectedLocationName, Mode=TwoWay}" Tag="{Binding SelectedLocationName, Mode=OneWay}" Focusable="True" FocusVisualStyle="{x:Null}">
+					<ComboBox.Style>
+						<Style TargetType="ComboBox">
+							<Setter Property="Template">
+								<Setter.Value>
+									<ControlTemplate TargetType="ComboBox">
+										<Grid>
+											<ToggleButton x:Name="ToggleButton" Focusable="false" IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press" Cursor="Hand" Background="Transparent">
+												<ToggleButton.Template>
+													<ControlTemplate TargetType="ToggleButton">
+														<Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="4">
+															<Grid HorizontalAlignment="Center">
+																<StackPanel x:Name="ContentPanel" Background="Transparent" Orientation="Horizontal" HorizontalAlignment="Center" Effect="{DynamicResource TabGlowEffect}">
+																	<Path Data="M 12,3 L 22,12 H 19 V 20 H 5 V 12 H 2 L 12,3 Z" Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform" Width="12" Height="12" Margin="0,0,3,0" VerticalAlignment="Center">
+																		<Path.Style>
+																			<Style TargetType="Path">
+																				<Setter Property="Visibility" Value="Collapsed"/>
+																				<Style.Triggers>
+																					<DataTrigger Binding="{Binding Path=SelectedItem.IsHome, RelativeSource={RelativeSource AncestorType=ComboBox}}" Value="True">
+																						<Setter Property="Visibility" Value="Visible"/>
+																					</DataTrigger>
+																				</Style.Triggers>
+																			</Style>
+																		</Path.Style>
+																	</Path>
+																	<Path Data="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zm0,9.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5s2.5,1.12 2.5,2.5s-1.12,2.5 -2.5,2.5z"  Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform" Width="11.5" Height="11.5" Margin="0,0,4,0" VerticalAlignment="Center">
+																		<Path.Style>
+																			<Style TargetType="Path">
+																				<Setter Property="Visibility" Value="Collapsed"/>
+																				<Style.Triggers>
+																					<DataTrigger Binding="{Binding Path=SelectedItem.IsWindowsLocation, RelativeSource={RelativeSource AncestorType=ComboBox}}" Value="True">
+																						<Setter Property="Visibility" Value="Visible"/>
+																					</DataTrigger>
+																				</Style.Triggers>
+																			</Style>
+																		</Path.Style>
+																	</Path>
+																	<Path Data="M 12,2 L 22,20 H 2 Z M 12,8 V 14 M 12,17 V 17.1" Stroke="{DynamicResource PrimaryTextBrush}" StrokeThickness="1" Fill="Transparent" Stretch="Uniform" Width="12" Height="12" Margin="0,0,3,0" VerticalAlignment="Center" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round">
+																		<Path.Style>
+																			<Style TargetType="Path">
+																				<Setter Property="Visibility" Value="Collapsed"/>
+																				<Style.Triggers>
+																					<DataTrigger Binding="{Binding Path=SelectedItem.HasActiveAlert, RelativeSource={RelativeSource AncestorType=ComboBox}}" Value="True">
+																						<Setter Property="Visibility" Value="Visible"/>
+																					</DataTrigger>
+																				</Style.Triggers>
+																			</Style>
+																		</Path.Style>
+																	</Path>
+																	<Grid MaxWidth="130" Width="{Binding ActualWidth, ElementName=SelectedCityText}" ClipToBounds="True" SizeChanged="LocationMarquee_SizeChanged" Background="Transparent" VerticalAlignment="Center" Height="16">
+																		<Canvas VerticalAlignment="Center" Height="16">
+																			<StackPanel Orientation="Horizontal" SizeChanged="LocationMarquee_SizeChanged">
+																				<StackPanel.RenderTransform>
+																					<TranslateTransform X="0"/>
+																				</StackPanel.RenderTransform>
+																				<TextBlock x:Name="SelectedCityText" Text="{Binding Path=Tag, RelativeSource={RelativeSource AncestorType=ComboBox}, FallbackValue=--}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" VerticalAlignment="Center" TextOptions.TextFormattingMode="{DynamicResource OsTextFormattingMode}" TextOptions.TextRenderingMode="{DynamicResource OsTextRenderingMode}" RenderOptions.ClearTypeHint="Enabled">
+																					<TextBlock.Style>
+																						<Style TargetType="TextBlock">
+																							<Style.Triggers>
+																								<DataTrigger Binding="{Binding IsMouseOver, ElementName=ContentPanel}" Value="True">
+																									<Setter Property="Foreground" Value="White"/>
+																								</DataTrigger>
+																							</Style.Triggers>
+																						</Style>
+																					</TextBlock.Style>
+																				</TextBlock>
+																				<TextBlock Text="{Binding Path=Tag, RelativeSource={RelativeSource AncestorType=ComboBox}, FallbackValue=--}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" Margin="20,0,0,0" Visibility="Collapsed" VerticalAlignment="Center" TextOptions.TextFormattingMode="{DynamicResource OsTextFormattingMode}" TextOptions.TextRenderingMode="{DynamicResource OsTextRenderingMode}" RenderOptions.ClearTypeHint="Enabled">
+																					<TextBlock.Style>
+																						<Style TargetType="TextBlock">
+																							<Style.Triggers>
+																								<DataTrigger Binding="{Binding IsMouseOver, ElementName=ContentPanel}" Value="True">
+																									<Setter Property="Foreground" Value="White"/>
+																								</DataTrigger>
+																							</Style.Triggers>
+																						</Style>
+																					</TextBlock.Style>
+																				</TextBlock>
+																			</StackPanel>
+																		</Canvas>
+																	</Grid>
+																	<Path x:Name="Arrow" Data="M 0,0 L 4,4 L 8,0 Z" Fill="{DynamicResource SecondaryTextBrush}" Width="8" Height="4" Margin="6,2,0,0" VerticalAlignment="Center" Stretch="Uniform"/>
+																</StackPanel>
+																<Border x:Name="KeyboardFocusBorder" BorderThickness="2" CornerRadius="6" Margin="-6,-4" Opacity="0.85" BorderBrush="{DynamicResource PrimaryTextBrush}" Background="Transparent" SnapsToDevicePixels="True" UseLayoutRounding="True" Visibility="Collapsed" IsHitTestVisible="False"/>
+															</Grid>
+														</Border>
+														<ControlTemplate.Triggers>
+															<Trigger SourceName="ContentPanel" Property="IsMouseOver" Value="True">
+																<Setter TargetName="Arrow" Property="Fill" Value="{DynamicResource PrimaryTextBrush}"/>
+																<Setter TargetName="ContentPanel" Property="Effect" Value="{DynamicResource TabHoverGlowEffect}"/>
+															</Trigger>
+															<DataTrigger Binding="{Binding ViewModel.IsLocationMenuSelected, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+																<Setter TargetName="KeyboardFocusBorder" Property="Visibility" Value="Visible"/>
+															</DataTrigger>
+														</ControlTemplate.Triggers>
+													</ControlTemplate>
+												</ToggleButton.Template>
+											</ToggleButton>
+
+											<Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+												<Border x:Name="DropDownBorder" Background="{DynamicResource SolidBackgroundBrush}" BorderBrush="{Binding BorderBrush, ElementName=WindowBorder}" BorderThickness="1" CornerRadius="4" MinWidth="{Binding ActualWidth, ElementName=ToggleButton}" Margin="0,2,0,0" UseLayoutRounding="{DynamicResource OsLayoutRounding}" TextOptions.TextFormattingMode="{DynamicResource OsTextFormattingMode}" TextOptions.TextRenderingMode="{DynamicResource OsTextRenderingMode}" RenderOptions.ClearTypeHint="Enabled">
+													<ScrollViewer SnapsToDevicePixels="True" MaxHeight="214" VerticalScrollBarVisibility="Auto" local:SmoothScrollBehavior.IsEnabled="True" local:SmoothScrollBehavior.ScrollStep="26.0">
+														<ScrollViewer.Template>
+															<ControlTemplate TargetType="ScrollViewer">
+																<Grid>
+																	<Grid.ColumnDefinitions>
+																		<ColumnDefinition Width="*"/>
+																		<ColumnDefinition Width="Auto"/>
+																	</Grid.ColumnDefinitions>
+																	<ScrollContentPresenter Grid.Column="0" CanContentScroll="{TemplateBinding CanContentScroll}"/>
+																	<ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" HorizontalAlignment="Right" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" Margin="0,4,2,4">
+																		<ScrollBar.Template>
+																			<ControlTemplate TargetType="ScrollBar">
+																				<Grid Background="Transparent">
+																					<Track x:Name="PART_Track" IsDirectionReversed="True">
+																						<Track.DecreaseRepeatButton>
+																							<RepeatButton Command="{x:Static ScrollBar.PageUpCommand}" Opacity="0" Focusable="False"/>
+																						</Track.DecreaseRepeatButton>
+																						<Track.IncreaseRepeatButton>
+																							<RepeatButton Command="{x:Static ScrollBar.PageDownCommand}" Opacity="0" Focusable="False"/>
+																						</Track.IncreaseRepeatButton>
+																						<Track.Thumb>
+																							<Thumb Cursor="Hand">
+																								<Thumb.Template>
+																									<ControlTemplate TargetType="Thumb">
+																										<Border x:Name="ThumbBorder" Width="4" MinHeight="24" CornerRadius="6" Background="#A0FFFFFF" HorizontalAlignment="Center">
+																											<Border.Effect>
+																												<DropShadowEffect Color="{DynamicResource PrimaryShadowColor}" BlurRadius="4" ShadowDepth="1" Opacity="0.5"/>
+																											</Border.Effect>
+																										</Border>
+																										<ControlTemplate.Triggers>
+																											<Trigger Property="IsMouseOver" Value="True">
+																												<Trigger.EnterActions>
+																													<BeginStoryboard>
+																														<Storyboard>
+																															<DoubleAnimation Storyboard.TargetName="ThumbBorder" Storyboard.TargetProperty="Width" To="6" Duration="0:0:0.1"/>
+																														</Storyboard>
+																													</BeginStoryboard>
+																												</Trigger.EnterActions>
+																												<Trigger.ExitActions>
+																													<BeginStoryboard>
+																														<Storyboard>
+																															<DoubleAnimation Storyboard.TargetName="ThumbBorder" Storyboard.TargetProperty="Width" To="4" Duration="0:0:0.15"/>
+																														</Storyboard>
+																													</BeginStoryboard>
+																												</Trigger.ExitActions>
+																											</Trigger>
+																										</ControlTemplate.Triggers>
+																									</ControlTemplate>
+																								</Thumb.Template>
+																							</Thumb>
+																						</Track.Thumb>
+																					</Track>
+																				</Grid>
+																			</ControlTemplate>
+																		</ScrollBar.Template>
+																	</ScrollBar>
+																</Grid>
+															</ControlTemplate>
+														</ScrollViewer.Template>
+														<StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" Margin="0,4,0,4"/>
+													</ScrollViewer>
+												</Border>
+											</Popup>
+										</Grid>
+									</ControlTemplate>
+								</Setter.Value>
+							</Setter>
+						</Style>
+					</ComboBox.Style>
+
+					<ComboBox.ItemContainerStyle>
+						<Style TargetType="ComboBoxItem">
+							<Setter Property="Background" Value="Transparent"/>
+							<Setter Property="BorderThickness" Value="0"/>
+							<Setter Property="Padding" Value="10,2"/>
+							<Setter Property="Cursor" Value="Hand"/>
+							<Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+							<Setter Property="Template">
+								<Setter.Value>
+									<ControlTemplate TargetType="ComboBoxItem">
+										<StackPanel>
+											<Rectangle x:Name="MenuSeparator" Height="1" Fill="{DynamicResource SecondaryTextBrush}" Margin="4,4,0,4" Visibility="Collapsed" Opacity="0.4">
+												<Rectangle.OpacityMask>
+													<LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+														<GradientStop Color="Transparent" Offset="0.0"/>
+														<GradientStop Color="Black" Offset="0.15"/>
+														<GradientStop Color="Black" Offset="0.85"/>
+														<GradientStop Color="Transparent" Offset="1.0"/>
+													</LinearGradientBrush>
+												</Rectangle.OpacityMask>
+											</Rectangle>
+											<Border Name="Border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4">
+												<ContentPresenter />
+											</Border>
+										</StackPanel>
+										<ControlTemplate.Triggers>
+											<DataTrigger Binding="{Binding DisplayName}" Value="Location manager">
+												<Setter TargetName="MenuSeparator" Property="Visibility" Value="Visible"/>
+											</DataTrigger>
+											<Trigger Property="IsSelected" Value="True">
+												<Setter TargetName="Border" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+											</Trigger>
+											<Trigger Property="IsMouseOver" Value="True">
+												<Setter TargetName="Border" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+											</Trigger>
+											<Trigger Property="IsKeyboardFocusWithin" Value="True">
+												<Setter TargetName="Border" Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+											</Trigger>
+										</ControlTemplate.Triggers>
+									</ControlTemplate>
+								</Setter.Value>
+							</Setter>
+						</Style>
+					</ComboBox.ItemContainerStyle>
+
+					<ComboBox.ItemTemplate>
+						<DataTemplate>
+							<StackPanel Orientation="Horizontal" Margin="0,1" HorizontalAlignment="Center">
+								<Path x:Name="HomeIcon" Data="M 12,3 L 2,12 H 5 V 20 H 19 V 12 H 22 L 12,3 Z" Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform" Width="12" Height="12" Margin="0,0,3,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+								<Path x:Name="GpsIcon" Data="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7zm0,9.5c-1.38,0 -2.5,-1.12 -2.5,-2.5s1.12,-2.5 2.5,-2.5s2.5,1.12 2.5,2.5s-1.12,2.5 -2.5,2.5z" Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform" Width="11.5" Height="11.5" Margin="0,0,3,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+								<Path x:Name="EditIcon" Data="M 3,17.25 V 21 H 6.75 L 17.81,9.94 L 14.06,6.19 L 3,17.25 Z M 20.71,7.04 C 21.1,6.65 21.1,6.02 20.71,5.63 L 18.37,3.29 C 17.98,2.9 17.35,2.9 16.96,3.29 L 15.13,5.12 L 18.88,8.87 L 20.71,7.04 Z" Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform" Width="12" Height="12" Margin="0,0,6,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+								<Path x:Name="ClearIcon" Data="M 19,6.41 L 17.59,5 L 12,10.59 L 6.41,5 L 5,6.41 L 10.59,12 L 5,17.59 L 6.41,19 L 12,13.41 L 17.59,19 L 19,17.59 L 13.41,12 Z" Fill="#DC3545" Stretch="Uniform" Width="12" Height="12" Margin="0,0,6,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+								<Path x:Name="AlertIcon" Data="M 12,2 L 22,20 H 2 Z M 12,8 V 14 M 12,17 V 17.1" Stroke="{DynamicResource PrimaryTextBrush}" StrokeThickness="1.25" Fill="Transparent" Stretch="Uniform" Width="12" Height="12" Margin="0,0,3,0" VerticalAlignment="Center" Visibility="{Binding ActiveAlertVisibility, FallbackValue=Collapsed}" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+								<Grid MaxWidth="140" Width="{Binding ActualWidth, ElementName=PrimaryItemText}" ClipToBounds="True" SizeChanged="LocationMarquee_SizeChanged" Background="Transparent" VerticalAlignment="Center" Height="16">
+									<Canvas VerticalAlignment="Center" Height="16">
+										<StackPanel Orientation="Horizontal" SizeChanged="LocationMarquee_SizeChanged">
+											<StackPanel.RenderTransform>
+												<TranslateTransform X="0"/>
+											</StackPanel.RenderTransform>
+											<TextBlock x:Name="PrimaryItemText" Text="{Binding DisplayName}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12" VerticalAlignment="Center"/>
+											<TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12" Margin="20,0,0,0" Visibility="Collapsed" VerticalAlignment="Center"/>
+										</StackPanel>
+									</Canvas>
+								</Grid>
+							</StackPanel>
+							<DataTemplate.Triggers>
+								<DataTrigger Binding="{Binding DisplayName}" Value="Location manager">
+									<Setter TargetName="EditIcon" Property="Visibility" Value="Visible"/>
+								</DataTrigger>
+								<DataTrigger Binding="{Binding DisplayName}" Value="Clear all alerts">
+									<Setter TargetName="ClearIcon" Property="Visibility" Value="Visible"/>
+								</DataTrigger>
+								<DataTrigger Binding="{Binding IsHome}" Value="True">
+									<Setter TargetName="HomeIcon" Property="Visibility" Value="Visible"/>
+								</DataTrigger>
+								<DataTrigger Binding="{Binding IsWindowsLocation}" Value="True">
+									<Setter TargetName="GpsIcon" Property="Visibility" Value="Visible"/>
+								</DataTrigger>
+							</DataTemplate.Triggers>
+						</DataTemplate>
+					</ComboBox.ItemTemplate>
+				</ComboBox>
+			</Grid>
+			<Grid Margin="0,0,0,0" Height="32">
+				<Viewbox Stretch="Uniform" StretchDirection="DownOnly" MaxWidth="235" HorizontalAlignment="Center">
+					<StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+						<TextBlock x:Name="StatusText" Text="{Binding CurrentWeather.Status, FallbackValue=--}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center">
+							<TextBlock.ToolTip>
+								<ToolTip>
+									<TextBlock>
+                <Run Text="{Binding ConnectionStatusPrefix, Mode=OneWay}"/>
+                <Run Text="Last updated:"/>
+                <LineBreak/>
+                <Run Text="{Binding CurrentWeather.LastUpdated, StringFormat={}{0:M/d} @ {0:h:mm tt}}"/>
+									</TextBlock>
+								</ToolTip>
+							</TextBlock.ToolTip>
+</TextBlock>
+					</StackPanel>
+				</Viewbox>
+			</Grid>
+			<Grid Margin="0,0,0,0" Width="235">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*"/>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="*"/>
+				</Grid.ColumnDefinitions>
+
+				<StackPanel x:Name="SunrisePanel" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="5,0,0,30" Opacity="{Binding SunriseOpacity}">
+					<Path Data="m 150.993,164.69593 c 18.50337,5.022 18.30458,4.96805 18.30458,4.96805 M 150.029,129.66587 c 18.51899,-6.25424 18.32133,-6.18749 18.32133,-6.18749 m -37.92558,-22.9104 C 141.9647,85.117008 141.84096,85.282678 141.84096,85.282678 m -49.39568,2.713665 c 0.003,-19.28479 0.003,-19.078015 0.003,-19.078015 M 56.043275,100.56798 C 44.503315,85.117008 44.62705,85.282678 44.62705,85.282678 M 35.245651,129.66587 C 16.726657,123.41163 16.92432,123.47838 16.92432,123.47838 m 16.903227,41.21755 c -18.50337,5.022 -18.304579,4.96805 -18.304579,4.96805 m 29.114047,15.92468 A 60.516072,60.516072 0 0 1 31.930596,148.48835 60.516072,60.516072 0 0 1 92.44667,87.972278 60.516072,60.516072 0 0 1 152.96274,148.48835 v 0 a 60.516072,60.516072 0 0 1 -12.70642,37.10031 M 0,185.68997 c 184.89334,0 184.89334,0 184.89334,0 m 42.21885,-6.71745 c 0,-94.867063 0,-94.420632 0,-94.420632 m -27.68186,26.266412 27.6167,-27.616683 v 0 l 27.6167,27.616683" Stroke="{DynamicResource PrimaryTextBrush}" StrokeThickness="1.25" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Fill="Transparent" Height="14" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+					<TextBlock x:Name="SunriseText" Text="{Binding CurrentWeather.Sunrise, FallbackValue=--:--}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="13" FontWeight="Medium" HorizontalAlignment="Center"/>
+				</StackPanel>
+
+				<Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="8" Padding="4" Margin="-4" Focusable="True" FocusVisualStyle="{x:Null}">
+					<Grid Width="100" Height="100" ToolTip="Click for your daily summary" Cursor="Hand" MouseLeftButtonUp="WeatherIconAnimation_MouseLeftButtonUp" Background="{DynamicResource IconVignetteBrush}">
+						<ContentControl Content="{Binding CurrentWeather.IconPath}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+							<ContentControl.Style>
+								<Style TargetType="ContentControl">
+									<Setter Property="ContentTemplate">
+										<Setter.Value>
+											<DataTemplate>
+												<Image Source="{Binding Converter={StaticResource LottieToStaticConverter}}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+											</DataTemplate>
+										</Setter.Value>
+									</Setter>
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding UseAnimatedIcons}" Value="True">
+											<Setter Property="ContentTemplate">
+												<Setter.Value>
+													<DataTemplate>
+														<lottie:LottieAnimationView ResourcePath="{Binding}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" AutoPlay="True" RepeatCount="-1"/>
+													</DataTemplate>
+												</Setter.Value>
+											</Setter>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</ContentControl.Style>
+						</ContentControl>
+					</Grid>
+					<Border.Style>
+						<Style TargetType="Border">
+							<Setter Property="BorderThickness" Value="2"/>
+							<Setter Property="BorderBrush" Value="Transparent"/>
+							<Setter Property="SnapsToDevicePixels" Value="True"/>
+							<Setter Property="UseLayoutRounding" Value="True"/>
+							<Style.Triggers>
+								<DataTrigger Binding="{Binding IsWeatherAnimationSelected}" Value="True">
+									<Setter Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}"/>
+								</DataTrigger>
+							</Style.Triggers>
+						</Style>
+					</Border.Style>
+				</Border>
+
+				<StackPanel x:Name="SunsetPanel" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,5,30" Opacity="{Binding SunsetOpacity}">
+					<Path Data="m 150.993,164.69593 c 18.50337,5.022 18.30458,4.96805 18.30458,4.96805 M 150.029,129.66587 c 18.51899,-6.25424 18.32133,-6.18749 18.32133,-6.18749 m -37.92558,-22.9104 C 141.9647,85.117008 141.84096,85.282678 141.84096,85.282678 m -49.39568,2.713665 c 0.003,-19.28479 0.003,-19.078015 0.003,-19.078015 M 56.043275,100.56798 C 44.503315,85.117008 44.62705,85.282678 44.62705,85.282678 M 35.245651,129.66587 C 16.726657,123.41163 16.92432,123.47838 16.92432,123.47838 m 16.903227,41.21755 c -18.50337,5.022 -18.304579,4.96805 -18.304579,4.96805 m 29.114047,15.92468 A 60.516072,60.516072 0 0 1 31.930596,148.48835 60.516072,60.516072 0 0 1 92.44667,87.972278 60.516072,60.516072 0 0 1 152.96274,148.48835 v 0 a 60.516072,60.516072 0 0 1 -12.70642,37.10031 M 0,185.68997 c 184.89334,0 184.89334,0 184.89334,0 M 227.11219,80.529086 c 0,94.867064 0,94.420634 0,94.420634 m -27.68186,-26.26641 27.6167,27.61668 v 0 l 27.6167,-27.61668" Stroke="{DynamicResource PrimaryTextBrush}" StrokeThickness="1.25" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Fill="Transparent" Height="14" Stretch="Uniform" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+					<TextBlock x:Name="SunsetText" Text="{Binding CurrentWeather.Sunset, FallbackValue=--:--}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="13" FontWeight="Medium" HorizontalAlignment="Center"/>
+				</StackPanel>
+			</Grid>
+			<Grid HorizontalAlignment="Center" Margin="0,-10,0,0">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="Auto"/>
+					<ColumnDefinition Width="Auto"/>
+				</Grid.ColumnDefinitions>
+				<TextBlock Grid.Column="0" Text="{Binding CurrentWeather.FeelsLike, StringFormat={}{0}°, FallbackValue=--°}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,13,6,0" ToolTip="Feels like..." />
+				<TextBlock Grid.Column="1" x:Name="CurrentTempText" Text="{Binding CurrentWeather.Temp, FallbackValue=--}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="50" FontWeight="Bold" HorizontalAlignment="Center" />
+				<TextBlock Grid.Column="2" Text="°" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="48" FontWeight="Bold" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="2,0,0,0" />
+			</Grid>
+			<TextBlock Foreground="{DynamicResource SecondaryTextBrush}" FontSize="20" HorizontalAlignment="Center" Margin="0,-6,0,0">
+                <Run Text="Hi: "/>
+                <Run x:Name="HighValue" Text="{Binding CurrentWeather.High, StringFormat={}{0}°, FallbackValue=--°}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+                <Run Text="  Lo: "/>
+                <Run x:Name="LowValue" Text="{Binding CurrentWeather.Low, StringFormat={}{0}°, FallbackValue=--°}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+			</TextBlock>
+			<TextBlock Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" HorizontalAlignment="Center" Margin="0,2,0,5">
+                <Run Text="Humidity: "/>
+                <Run x:Name="HumidityValue" Text="{Binding CurrentWeather.Humidity, FallbackValue=--}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/><Run Text="%" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/>
+			</TextBlock>
+			<StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8">
+				<TextBlock Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" Margin="0,0,5,0"><Run Text="Wind: "/><Run x:Name="WindSpeedValue" Text="{Binding CurrentWeather.WindSpeed, FallbackValue=--}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/><Run Text=" "/><Run Text="{Binding CurrentWeather.WindSpeedUnit, FallbackValue=mph}"/><Run Text=" "/><Run x:Name="WindDirValue" Text="{Binding CurrentWeather.WindDir, FallbackValue=--}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/></TextBlock>
+				<Path Data="M 5,0 L 10,10 L 5,7 L 0,10 Z" Fill="{DynamicResource PrimaryTextBrush}" Width="10" Height="10" Stretch="Fill" RenderTransformOrigin="0.5,0.5" Margin="0,2,0,0">
+					<Path.RenderTransform>
+						<RotateTransform Angle="{Binding WindRotationAngle}"/>
+					</Path.RenderTransform>
+				</Path>
+			</StackPanel>
+			<Grid Margin="0,-2,0,6">
+				<Grid.Triggers>
+					<EventTrigger RoutedEvent="Loaded">
+						<BeginStoryboard>
+							<Storyboard RepeatBehavior="Forever">
+								<DoubleAnimationUsingKeyFrames Storyboard.TargetName="HourlyPrecipText" Storyboard.TargetProperty="Opacity">
+									<LinearDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:4" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:5" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:9" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:10" Value="1"/>
+								</DoubleAnimationUsingKeyFrames>
+								<DoubleAnimationUsingKeyFrames Storyboard.TargetName="HourlyPrecipChanceText" Storyboard.TargetProperty="Opacity">
+									<LinearDoubleKeyFrame KeyTime="0:0:0" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:4" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:5" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:9" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:10" Value="0"/>
+								</DoubleAnimationUsingKeyFrames>
+							</Storyboard>
+						</BeginStoryboard>
+					</EventTrigger>
+				</Grid.Triggers>
+				<TextBlock x:Name="HourlyPrecipText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" HorizontalAlignment="Center">
+                <Run Text="Precipitation: "/><Run Text="{Binding CurrentWeather.Precip, FallbackValue=--}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/><Run Text=" "/><Run Text="{Binding ViewModel.PrecipUnit, RelativeSource={RelativeSource AncestorType=Window}}"/>
+				</TextBlock>
+				<TextBlock x:Name="HourlyPrecipChanceText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" HorizontalAlignment="Center" Opacity="0">
+                <Run Text="Precip. chance: "/><Run Text="{Binding CurrentWeather.PrecipChance, FallbackValue=--}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/><Run Text="%"/>
+				</TextBlock>
+			</Grid>
+			<Grid>
+				<Grid.Triggers>
+					<EventTrigger RoutedEvent="Loaded">
+						<BeginStoryboard>
+							<Storyboard RepeatBehavior="Forever">
+								<DoubleAnimationUsingKeyFrames Storyboard.TargetName="UvIndexText" Storyboard.TargetProperty="Opacity">
+									<LinearDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:4" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:5" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:9" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:10" Value="1"/>
+								</DoubleAnimationUsingKeyFrames>
+								<DoubleAnimationUsingKeyFrames Storyboard.TargetName="AirQualityText" Storyboard.TargetProperty="Opacity">
+									<LinearDoubleKeyFrame KeyTime="0:0:0" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:4" Value="0"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:5" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:9" Value="1"/>
+									<LinearDoubleKeyFrame KeyTime="0:0:10" Value="0"/>
+								</DoubleAnimationUsingKeyFrames>
+							</Storyboard>
+						</BeginStoryboard>
+					</EventTrigger>
+				</Grid.Triggers>
+				<TextBlock x:Name="UvIndexText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" HorizontalAlignment="Center">
+                    <Run Text="UV index: "/><Run Text="{Binding CurrentWeather.UvIndex}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/><Run Text="{Binding CurrentWeather.UvRating, StringFormat=' ({0})'}" FontSize="11" FontWeight="SemiBold"/>
+				</TextBlock>
+				<TextBlock x:Name="AirQualityText" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="14" HorizontalAlignment="Center" Opacity="0">
+                    <Run Text="Air quality: "/><Run Text="{Binding CurrentWeather.Aqi, FallbackValue=--}" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}"/><Run Text="{Binding CurrentWeather.AqiRating, StringFormat=' ({0})'}" FontSize="11" FontWeight="SemiBold"/>
+				</TextBlock>
+			</Grid>
+		</StackPanel>
+
+		<Border x:Name="OnboardingToast" VerticalAlignment="Center" Padding="12" Background="{DynamicResource ToastBackgroundBrush}" BorderBrush="{DynamicResource PrimaryTextBrush}" BorderThickness="1" CornerRadius="8" Panel.ZIndex="50" Effect="{DynamicResource BaseTextShadowEffect}">
+			<Border.Style>
+				<Style TargetType="Border">
+					<Setter Property="IsHitTestVisible" Value="False"/>
+					<Setter Property="Opacity" Value="0"/>
+					<Style.Triggers>
+						<DataTrigger Binding="{Binding ViewModel.OnboardingVisibility, RelativeSource={RelativeSource AncestorType=Window}}" Value="Visible">
+							<Setter Property="IsHitTestVisible" Value="True"/>
+							<DataTrigger.EnterActions>
+								<BeginStoryboard>
+									<Storyboard>
+										<DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.4"/>
+										<ThicknessAnimation Storyboard.TargetProperty="Margin" From="15,30,15,-30" To="15,0,15,0" Duration="0:0:0.4">
+											<ThicknessAnimation.EasingFunction>
+												<QuadraticEase EasingMode="EaseOut"/>
+											</ThicknessAnimation.EasingFunction>
+										</ThicknessAnimation>
+									</Storyboard>
+								</BeginStoryboard>
+							</DataTrigger.EnterActions>
+							<DataTrigger.ExitActions>
+								<BeginStoryboard>
+									<Storyboard>
+										<DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.4"/>
+										<ThicknessAnimation Storyboard.TargetProperty="Margin" From="15,0,15,0" To="15,30,15,-30" Duration="0:0:0.4">
+											<ThicknessAnimation.EasingFunction>
+												<QuadraticEase EasingMode="EaseIn"/>
+											</ThicknessAnimation.EasingFunction>
+										</ThicknessAnimation>
+									</Storyboard>
+								</BeginStoryboard>
+							</DataTrigger.ExitActions>
+						</DataTrigger>
+					</Style.Triggers>
+				</Style>
+			</Border.Style>
+			<Grid>
+				<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12,0,12,0">
+					<TextBlock Text="Welcome to SkyPeek!" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Margin="0,-4,0,2"/>
+					<TextBlock Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" FontSize="13" TextAlignment="Center">
+                        Check the <Hyperlink NavigateUri="help" RequestNavigate="OnboardingHyperlink_RequestNavigate" Foreground="{DynamicResource LinkTextBrush}" TextDecorations="None">User Guide</Hyperlink> for detailed instructions. If you need it later, click "Help &amp; info" in the Settings window. Happy Peeking!
+					</TextBlock>
+				</StackPanel>
+				<Border Cursor="Hand" Background="Transparent" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,-8,-8,0" Padding="4" MouseLeftButtonUp="DismissOnboarding_MouseLeftButtonUp">
+					<Path Data="M 0,0 L 8,8 M 8,0 L 0,8" Stroke="IndianRed" StrokeThickness="1.5" Width="8" Height="8" Stretch="Uniform" />
+				</Border>
+			</Grid>
+		</Border>
+	</Grid>
+</UserControl>

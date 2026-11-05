@@ -1,0 +1,23 @@
+﻿<Window x:Class="SkyPeek.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SkyPeek"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="0" Width="0" Left="-9999" Top="-9999" FocusVisualStyle="{x:Null}"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False">
+	<Grid FocusVisualStyle="{x:Null}">
+		<tb:TaskbarIcon x:Name="TrayIcon"
+                        ToolTipText="SkyPeek"
+                        TrayLeftMouseUp="TrayIcon_TrayLeftMouseUp"
+						TrayRightMouseUp="TrayIcon_TrayRightMouseUp"
+                        Focusable="True"
+                        FocusVisualStyle="{x:Null}"
+                        KeyboardNavigation.IsTabStop="True"
+                        KeyboardNavigation.TabNavigation="Once">
+		</tb:TaskbarIcon>
+	</Grid>
+</Window>

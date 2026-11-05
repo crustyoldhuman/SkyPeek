@@ -1,0 +1,49 @@
+﻿<Application x:Class="SkyPeek.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SkyPeek">
+	<Application.Resources>
+		<ResourceDictionary>
+			<local:LottieToStaticConverter x:Key="LottieToStaticConverter" />
+
+			<Style x:Key="GlobalFocusVisual">
+				<Setter Property="Control.Template">
+					<Setter.Value>
+						<ControlTemplate>
+							<Border BorderBrush="{DynamicResource PrimaryTextBrush}" 
+							        BorderThickness="2" 
+							        CornerRadius="6" 
+							        Margin="-3" 
+							        SnapsToDevicePixels="True"
+							        UseLayoutRounding="True"
+							        Opacity="0.85"/>
+						</ControlTemplate>
+					</Setter.Value>
+				</Setter>
+			</Style>
+
+			<Style x:Key="RadioButtonFocusVisual">
+				<Setter Property="Control.Template">
+					<Setter.Value>
+						<ControlTemplate>
+							<Border BorderBrush="{DynamicResource PrimaryTextBrush}" 
+							        BorderThickness="2" 
+							        CornerRadius="4" 
+							        Width="30" Height="30" 
+							        HorizontalAlignment="Left" 
+							        VerticalAlignment="Center" 
+							        Margin="-4,0,0,0" 
+							        Opacity="0.6"/>
+						</ControlTemplate>
+					</Setter.Value>
+				</Setter>
+			</Style>
+
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceDictionary Source="IconAssets/StaticIcons.xaml" />
+				<ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Theme/Dark.xaml" />
+				<ResourceDictionary Source="pack://application:,,,/Wpf.Ui;component/Resources/Wpf.Ui.xaml" />
+			</ResourceDictionary.MergedDictionaries>
+		</ResourceDictionary>
+	</Application.Resources>
+</Application>

@@ -1,0 +1,130 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<Platforms>x64</Platforms>
+		<PlatformTarget>x64</PlatformTarget>
+		<TargetPlatformVersion>10.0.19041.0</TargetPlatformVersion>
+		<SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<Version>1.0.0.0</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>1.0.0.0</FileVersion>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<ApplicationIcon>IconLogo.ico</ApplicationIcon>
+		<Platforms>AnyCPU;x64</Platforms>
+		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+	</PropertyGroup>
+	<ItemGroup>
+	  <Content Remove="C:\Users\kevin\.nuget\packages\lottiesharp\2.4.3\contentFiles\any\net8.0-windows7.0\lottie_sharp.ico" />
+	</ItemGroup>
+	<ItemGroup>
+		<None Remove="Assets\alerttone.wav" />
+		<None Remove="Assets\alerttone2.wav" />
+		<None Remove="Assets\alerttone3.wav" />
+		<None Remove="IconAssets\0ClearSkyDaytime.json" />
+		<None Remove="IconAssets\0ClearSkyNighttime.json" />
+		<None Remove="IconAssets\1MainlyClearDaytime.json" />
+		<None Remove="IconAssets\1MainlyClearNighttime.json" />
+		<None Remove="IconAssets\2PartlyCloudyDaytime.json" />
+		<None Remove="IconAssets\2PartlyCloudyNighttime.json" />
+		<None Remove="IconAssets\3Overcast.json" />
+		<None Remove="IconAssets\45Fog.json" />
+		<None Remove="IconAssets\48FogRime.json" />
+		<None Remove="IconAssets\51DrizzleLight.json" />
+		<None Remove="IconAssets\53DrizzleModerate.json" />
+		<None Remove="IconAssets\55DrizzleDense.json" />
+		<None Remove="IconAssets\56FreezingDrizzleSlight.json" />
+		<None Remove="IconAssets\57FreezingDrizzleDense.json" />
+		<None Remove="IconAssets\61RainSlight.json" />
+		<None Remove="IconAssets\63RainModerate.json" />
+		<None Remove="IconAssets\65RainHeavy.json" />
+		<None Remove="IconAssets\66FreezingRainSlight.json" />
+		<None Remove="IconAssets\67FreezingRainHeavy.json" />
+		<None Remove="IconAssets\71SnowfallSlight.json" />
+		<None Remove="IconAssets\73SnowfallModerate.json" />
+		<None Remove="IconAssets\75SnowfallHeavy.json" />
+		<None Remove="IconAssets\77SnowGrains.json" />
+		<None Remove="IconAssets\80RainShowersSlightDaytime.json" />
+		<None Remove="IconAssets\80RainShowersSlightNighttime.json" />
+		<None Remove="IconAssets\81RainShowersModerateDaytime.json" />
+		<None Remove="IconAssets\81RainShowersModerateNighttime.json" />
+		<None Remove="IconAssets\82RainShowersViolentDaytime.json" />
+		<None Remove="IconAssets\82RainShowersViolentNighttime.json" />
+		<None Remove="IconAssets\85SnowShowersSlightDaytime.json" />
+		<None Remove="IconAssets\85SnowShowersSlightNighttime.json" />
+		<None Remove="IconAssets\86SnowShowersHeavyDaytime.json" />
+		<None Remove="IconAssets\86SnowShowersHeavyNighttime.json" />
+		<None Remove="IconAssets\95Thunderstorm.json" />
+		<None Remove="IconAssets\96ThunderstormWithHailSlight.json" />
+		<None Remove="IconAssets\99ThunderstormWithHailHeavy.json" />
+		<None Remove="IconAssets\LoadingAnimation.rawr" />
+		<None Remove="IconAssets\SkyPeekLoadingAnimation.json" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Resource Include="Assets\alerttone.wav">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Assets\alerttone2.wav">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="Assets\alerttone3.wav">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Resource>
+	  <Resource Include="IconAssets\SkyPeekLoadingAnimation.json" />
+	  <Resource Include="IconLogo.ico" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
+		<PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.15.0" />
+		<PackageReference Include="wpf-ui" Version="4.3.0" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="LottieSharp" Version="2.4.3" />
+</ItemGroup>
+	<ItemGroup>
+		<Resource Include="IconAssets\0ClearSkyDaytime.json" />
+		<Resource Include="IconAssets\0ClearSkyNighttime.json" />
+		<Resource Include="IconAssets\1MainlyClearDaytime.json" />
+		<Resource Include="IconAssets\1MainlyClearNighttime.json" />
+		<Resource Include="IconAssets\2PartlyCloudyDaytime.json" />
+		<Resource Include="IconAssets\2PartlyCloudyNighttime.json" />
+		<Resource Include="IconAssets\3Overcast.json" />
+		<Resource Include="IconAssets\45Fog.json" />
+		<Resource Include="IconAssets\48FogRime.json" />
+		<Resource Include="IconAssets\51DrizzleLight.json" />
+		<Resource Include="IconAssets\53DrizzleModerate.json" />
+		<Resource Include="IconAssets\55DrizzleDense.json" />
+		<Resource Include="IconAssets\56FreezingDrizzleSlight.json" />
+		<Resource Include="IconAssets\57FreezingDrizzleDense.json" />
+		<Resource Include="IconAssets\61RainSlight.json" />
+		<Resource Include="IconAssets\63RainModerate.json" />
+		<Resource Include="IconAssets\65RainHeavy.json" />
+		<Resource Include="IconAssets\66FreezingRainSlight.json" />
+		<Resource Include="IconAssets\67FreezingRainHeavy.json" />
+		<Resource Include="IconAssets\71SnowfallSlight.json" />
+		<Resource Include="IconAssets\73SnowfallModerate.json" />
+		<Resource Include="IconAssets\75SnowfallHeavy.json" />
+		<Resource Include="IconAssets\77SnowGrains.json" />
+		<Resource Include="IconAssets\80RainShowersSlightDaytime.json" />
+		<Resource Include="IconAssets\80RainShowersSlightNighttime.json" />
+		<Resource Include="IconAssets\81RainShowersModerateDaytime.json" />
+		<Resource Include="IconAssets\81RainShowersModerateNighttime.json" />
+		<Resource Include="IconAssets\82RainShowersViolentDaytime.json" />
+		<Resource Include="IconAssets\82RainShowersViolentNighttime.json" />
+		<Resource Include="IconAssets\85SnowShowersSlightDaytime.json" />
+		<Resource Include="IconAssets\85SnowShowersSlightNighttime.json" />
+		<Resource Include="IconAssets\86SnowShowersHeavyDaytime.json" />
+		<Resource Include="IconAssets\86SnowShowersHeavyNighttime.json" />
+		<Resource Include="IconAssets\95Thunderstorm.json" />
+		<Resource Include="IconAssets\96ThunderstormWithHailSlight.json" />
+		<Resource Include="IconAssets\99ThunderstormWithHailHeavy.json" />
+	</ItemGroup>
+	<ItemGroup>
+		<Content Include="SkyPeekReadMe.html">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+</Project>
