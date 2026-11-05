@@ -11,27 +11,31 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 
 <p align="center"><img width="400" alt="AdTrackingFreePromo" src="https://github.com/user-attachments/assets/48858a94-a481-484e-aef6-75306d3d1d3c" /> <img width="400" alt="AdTrackingFreePromo" src="https://github.com/user-attachments/assets/a4a7b67e-6290-4b81-bf8c-0b7183a557c6" /></p>
 
+<div align="center">
 
 ## Table of Contents
-1. [System Requirements](#system-requirements)
-2. [Installation & Removal](#installation--removal)
-3. [Quick-Start Guide](#quick-start-guide)
-4. [Navigation & Usage](#navigation--usage)
-5. [Current Tab](#current-tab)
-6. [Hourly Tab](#hourly-tab)
-7. [Daily Tab](#daily-tab)
-8. [Location Management](#location-management)
-9. [Weather Alerts](#weather-alerts)
-10. [Daily Summary](#daily-summary)
-11. [Live Radar](#live-radar)
-12. [Tray Menu](#tray-menu)
-13. [Settings](#settings)
-14. [Third Party Services Info](#third-party-services-info)
-15. [Accessibility Information](#accessibility-information)
-16. [Updates & Support](#updates--support)
-17. [Version Changelog](#version-changelog)
-18. [User License](#user-license)
-19. [Shameless Plugs](#shameless-plugs)
+
+1\. [System Requirements](#system-requirements)<br>
+2\. [Installation & Removal](#installation--removal)<br>
+3\. [Quick-Start Guide](#quick-start-guide)<br>
+4\. [Navigation & Usage](#navigation--usage)<br>
+5\. [Current Tab](#current-tab)<br>
+6\. [Hourly Tab](#hourly-tab)<br>
+7\. [Daily Tab](#daily-tab)<br>
+8\. [Location Management](#location-management)<br>
+9\. [Weather Alerts](#weather-alerts)<br>
+10\. [Daily Summary](#daily-summary)<br>
+11\. [Live Radar](#live-radar)<br>
+12\. [Tray Menu](#tray-menu)<br>
+13\. [Settings](#settings)<br>
+14\. [Third Party Services Info](#third-party-services-info)<br>
+15\. [Accessibility Information](#accessibility-information)<br>
+16\. [Updates & Support](#updates--support)<br>
+17\. [Version Changelog](#version-changelog)<br>
+18\. [User License](#user-license)<br>
+19\. [Shameless Plugs](#shameless-plugs)
+
+</div>
     
 ## System Requirements
 
