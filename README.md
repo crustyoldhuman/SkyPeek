@@ -53,10 +53,10 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 
 ### Installation
 
-To install via Microsoft Store, visit this URL: https://apps.microsoft.com/detail/9PK6CB35BSGD
+To install via Microsoft Store, visit this URL: https://apps.microsoft.com/detail/9PK6CB35BSGD <br>
 *Note: Installation instructions do not apply to Microsoft Store installations*
 
-1. Double-click SkyPeek_1.0.0_Setup.exe, or whatever version you're installing.
+1. Double-click SkyPeek_1.0.0_Setup.exe, or whatever version you're installing after downloading it from the most current version on the Releases page. 
 2. Push "Next". Accept the license agreement, and press "Next" again.
 3. Verify the default installation path, or select your own from the "Browse" button. Press "Next" to continue.
 4. Select whether or not to receive the optional Desktop shortcut.
