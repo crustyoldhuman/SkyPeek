@@ -109,10 +109,10 @@
 							<Border Height="32" />
 
 							<StackPanel Grid.Row="1" Margin="0,-20,0,0" VerticalAlignment="Top" HorizontalAlignment="Center">
-								<TextBlock Text="SkyPeek" FontSize="36" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-						<TextBlock Text="Version 1.0.0" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+								<TextBlock Text="SkyPeek" FontSize="34" FontWeight="Medium" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+						<TextBlock Text="Version 1.0.1" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,2"/>
 
-						<TextBlock Text="Created with love on April 20th, 2026" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" FontSize="16" Margin="0,6,0,2"/>
+						<TextBlock Text="Created with love on April 20th, 2026" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" FontSize="14" Margin="0,6,0,2"/>
 						<TextBlock Text="By Kevin Stanislawski" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,10" FontSize="14"/>
 
 						<TextBlock  Text="Source code available on Github:" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" Margin="0,0,0,2" FontSize="14"/>
@@ -142,10 +142,15 @@
 						</Hyperlink>
 						</TextBlock>
 
-						<TextBlock Text="Check out ProperDim, my screen dimming app:" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" FontSize="14"/>
-						<TextBlock HorizontalAlignment="Center" Margin="0,0,0,14" FontSize="14">
+						<TextBlock Text="Other apps by crustyoldhuman:" Foreground="{DynamicResource PrimaryTextBrush}" HorizontalAlignment="Center" FontSize="14"/>
+						<TextBlock HorizontalAlignment="Center" Margin="0,2,0,2" FontSize="14">
 						<Hyperlink x:Name="Link5" NavigateUri="https://apps.microsoft.com/detail/9p4lhj799hxm" Foreground="CornflowerBlue" RequestNavigate="Hyperlink_RequestNavigate">
 							<Run Text="ProperDim on Microsoft Store"/>
+						</Hyperlink>
+						</TextBlock>
+						<TextBlock HorizontalAlignment="Center" Margin="0,2,0,12" FontSize="14">
+						<Hyperlink x:Name="Link6" NavigateUri="https://apps.microsoft.com/detail/9P074TF9RTJ2" Foreground="CornflowerBlue" RequestNavigate="Hyperlink_RequestNavigate">
+							<Run Text="Rapt Video Player on Microsoft Store"/>
 						</Hyperlink>
 						</TextBlock>
 

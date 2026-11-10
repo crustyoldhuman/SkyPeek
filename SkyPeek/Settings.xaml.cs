@@ -169,6 +169,8 @@ namespace SkyPeek
 
 		private void LoadSettingsToUI(AppConfig config)
 		{
+			_isLoadingSettings = true;
+
 			IntervalInput.Value = config.RefreshInterval;
 			IntervalInput.Text = config.RefreshInterval.ToString();
 			StartupCheckbox.IsChecked = config.StartOnBoot;
@@ -215,6 +217,7 @@ namespace SkyPeek
 
 			// Re-enable the event for actual user interactions
 			_isUpdatingDropdown = false;
+			_isLoadingSettings = false;
 		}
 
 		private void ExportSettings_Click(object sender, RoutedEventArgs e)
@@ -751,6 +754,7 @@ namespace SkyPeek
 
 		private bool _isClosing = false;
 		private bool _isSaving = false;
+		private bool _isLoadingSettings = false;
 
 		protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
 		{
@@ -986,7 +990,7 @@ namespace SkyPeek
 
 		private void SlideoutScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
 		{
-			if (this.IsLoaded && !_isClosing)
+			if (this.IsLoaded && !_isClosing && !_isLoadingSettings)
 			{
 				_isPreviewingScale = true;
 				if (System.Windows.Application.Current.Windows.OfType<SecondaryViews>().FirstOrDefault() is SecondaryViews secondaryViews)
