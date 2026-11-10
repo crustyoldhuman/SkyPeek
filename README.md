@@ -1,6 +1,7 @@
 # <p align="center">Welcome to SkyPeek v1.0</p>
 <br>
-<p align="center"><img height="380" alt="SkyPeek Promotional Poster Art" src="https://github.com/user-attachments/assets/47195249-e166-4932-9bdc-7f4b534159aa"/></p>
+<p align="center"><img height="380" alt="SkyPeek Promotional Poster Art" src="https://github.com/user-attachments/assets/d7f48193-8269-4e90-905e-b60c21ed5159" /></p>
+
 
 <div align="center">
 <h4>Take a peek into your weather.</h4></div>
@@ -52,9 +53,11 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 ## Installation & Removal
 
 ### Installation
+
+To install via Microsoft Store, visit this URL: https://apps.microsoft.com/detail/9PK6CB35BSGD <br>
 *Note: Installation instructions do not apply to Microsoft Store installations*
 
-1. Double-click SkyPeek_1.0.0_Setup.exe, or whatever version you're installing.
+1. Double-click SkyPeek_1.0.0_Setup.exe, or whatever version you're installing after downloading it from the most current version on the Releases page. 
 2. Push "Next". Accept the license agreement, and press "Next" again.
 3. Verify the default installation path, or select your own from the "Browse" button. Press "Next" to continue.
 4. Select whether or not to receive the optional Desktop shortcut.
@@ -106,6 +109,7 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 - The Hourly tab has two ways to present the 24-hour forecast: the graph view, and the agenda view. To swap between these two views, you can click the button on the top-right of the Hourly Tab to toggle between the two. Additionally, you can double-click anywhere on the hourly cards themselves to quickly toggle from agenda to graph and back again. 
 
 ## Daily Tab
+<p align="center"><img width="500" alt="CurrentWeatherPromo" src="https://github.com/user-attachments/assets/4a07731f-6909-46f1-bc8c-bd5a581aaf59" /></p>
 
 - The Daily tab provides you with a complete 10-day forecast for your current location. To navigate through the daily forecasts click on the scroll bar, use your mouse's scroll wheel, or use keyboard controls to navigate right and left through the cards. 
 - Like the Hourly tab, the precipitation values on the hourly cards automatically transitions between the forecasted precipitation amount and the chance of precipitation. Similarly, the UV index and Air Quality values also automatically transition to keep the weather widget compact.
