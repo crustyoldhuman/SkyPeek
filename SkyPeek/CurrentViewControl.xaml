@@ -572,7 +572,7 @@
 			</Border.Style>
 			<Grid>
 				<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12,0,12,0">
-					<TextBlock Text="Welcome to SkyPeek!" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Margin="0,-4,0,2"/>
+					<TextBlock Text="Welcome to SkyPeek!" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center" Margin="0,-4,0,2"/>
 					<TextBlock Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" FontSize="13" TextAlignment="Center">
                         Check the <Hyperlink NavigateUri="help" RequestNavigate="OnboardingHyperlink_RequestNavigate" Foreground="{DynamicResource LinkTextBrush}" TextDecorations="None">User Guide</Hyperlink> for detailed instructions. If you need it later, click "Help &amp; info" in the Settings window. Happy Peeking!
 					</TextBlock>
