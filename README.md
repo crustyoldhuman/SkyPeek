@@ -1,4 +1,4 @@
-# <p align="center">Welcome to SkyPeek v1.0</p>
+# <p align="center">Welcome to SkyPeek</p>
 <br>
 <p align="center"><img height="380" alt="SkyPeek Promotional Poster Art" src="https://github.com/user-attachments/assets/d7f48193-8269-4e90-905e-b60c21ed5159" /></p>
 
