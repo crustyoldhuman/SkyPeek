@@ -71,17 +71,6 @@ namespace SkyPeek
 	{
 		public SlideoutViewModel ViewModel { get; } = new();
 
-		private static void LogUIErrorToDesktop(string step, Exception ex)
-		{
-			try
-			{
-				string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-				string logPath = System.IO.Path.Combine(desktopPath, "SkyPeek_LoadingErrorLog.txt");
-				System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {step} - {ex.Message}\n{ex.StackTrace}\n\n");
-			}
-			catch { }
-		}
-
 		public void RefreshTheme()
 		{
 			ThemeHelper.ApplyAccentColor(this, GradientCenter, GradientEdge, WindowBorder, WindowShadow);
@@ -341,9 +330,8 @@ namespace SkyPeek
 				// 2. NOW process all bindings safely behind the opaque loading screen
 				await ApplyDataAsync();
 			}
-			catch (Exception ex)
+			catch (Exception)
 			{
-				LogUIErrorToDesktop("ApplyDataAsync", ex);
 			}
 			finally
 			{
