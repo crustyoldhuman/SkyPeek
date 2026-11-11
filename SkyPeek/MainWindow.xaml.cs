@@ -232,7 +232,7 @@ namespace SkyPeek
 						else
 						{
 							UpdateTrayIcon("Off");
-							TrayIcon.ToolTipText = "Waiting for connection...";
+							try { TrayIcon.ToolTipText = "Waiting for connection..."; } catch { }
 						}
 					}
 					else
@@ -246,7 +246,7 @@ namespace SkyPeek
 						else
 						{
 							UpdateTrayIcon("ERR");
-							TrayIcon.ToolTipText = "Weather API unreachable";
+							try { TrayIcon.ToolTipText = "Weather API unreachable"; } catch { }
 						}
 					}
 				}
@@ -757,7 +757,7 @@ namespace SkyPeek
 							else
 							{
 								UpdateTrayIcon("Off");
-								TrayIcon.ToolTipText = "Waiting for connection...";
+								try { TrayIcon.ToolTipText = "Waiting for connection..."; } catch { }
 							}
 						}
 					}
@@ -1191,7 +1191,7 @@ namespace SkyPeek
 					if (city.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && state.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase))
 					{
 						UpdateTrayIcon("Off");
-						TrayIcon.ToolTipText = "Waiting for connection...";
+						try { TrayIcon.ToolTipText = "Waiting for connection..."; } catch { }
 					}
 				});
 				return null;
@@ -1435,7 +1435,7 @@ namespace SkyPeek
 			if (_isBootLoading)
 			{
 				UpdateTrayIcon("--°", null);
-				TrayIcon.ToolTipText = "Connecting to weather services...";
+				try { TrayIcon.ToolTipText = "Connecting to weather services..."; } catch { }
 				return;
 			}
 
@@ -1460,12 +1460,12 @@ namespace SkyPeek
 				string statusPrefix = _isOffline ? "(Offline)\n" : (_apiRecoveryTimer.IsEnabled ? "(API Unreachable)\n" : "");
 				string alertPrefix = activeAlertCount > 0 ? $"Active alerts: {activeAlertCount}\n" : "";
 				string rawToolTip = $"{statusPrefix}{alertPrefix}{data.Status}\nHumidity: {data.Humidity}%\nWind: {data.WindSpeed} {data.WindSpeedUnit} {data.WindDir}";
-				TrayIcon.ToolTipText = rawToolTip.Length <= 127 ? rawToolTip : rawToolTip[..124] + "...";
+				try { TrayIcon.ToolTipText = rawToolTip.Length <= 127 ? rawToolTip : rawToolTip[..124] + "..."; } catch { }
 			}
 			else
 			{
 #if !DEBUG
-				_ = SyncWindowsLocationAsync();
+                _ = SyncWindowsLocationAsync();
 				_ = RefreshAllLocationsCacheAsync(true);
 #endif
 			}
@@ -1483,11 +1483,15 @@ namespace SkyPeek
 				if (!_recoveryTimer.IsEnabled) _recoveryTimer.Start();
 			}
 
-			System.Drawing.Icon newIcon = TrayIconService.GenerateIcon(text, alertColor, VisualTreeHelper.GetDpi(this).PixelsPerDip, AppConfig.Current.EnableTrayAlertColors);
-			TrayIcon.Icon = newIcon;
+			try
+			{
+				System.Drawing.Icon newIcon = TrayIconService.GenerateIcon(text, alertColor, VisualTreeHelper.GetDpi(this).PixelsPerDip, AppConfig.Current.EnableTrayAlertColors);
+				TrayIcon.Icon = newIcon;
 
-			_currentTrayIcon?.Dispose();
-			_currentTrayIcon = newIcon;
+				_currentTrayIcon?.Dispose();
+				_currentTrayIcon = newIcon;
+			}
+			catch { }
 		}
 
 		private static string GithubVersionPattern => @"""tag_name"":\s*""v?([^""]+)""";

@@ -224,7 +224,8 @@ namespace SkyPeek
 			if (e.Key == Key.Up)
 			{
 				e.Handled = true;
-				if (Keyboard.FocusedElement == CloseButton) Link5.Focus();
+				if (Keyboard.FocusedElement == CloseButton) Link6.Focus();
+				else if (Keyboard.FocusedElement == Link6) Link5.Focus();
 				else if (Keyboard.FocusedElement == Link5) Link4.Focus();
 				else if (Keyboard.FocusedElement == Link4) Link3.Focus();
 				else if (Keyboard.FocusedElement == Link3) Link2.Focus();
@@ -240,7 +241,8 @@ namespace SkyPeek
 				else if (Keyboard.FocusedElement == Link2) Link3.Focus();
 				else if (Keyboard.FocusedElement == Link3) Link4.Focus();
 				else if (Keyboard.FocusedElement == Link4) Link5.Focus();
-				else if (Keyboard.FocusedElement == Link5) CloseButton.Focus();
+				else if (Keyboard.FocusedElement == Link5) Link6.Focus();
+				else if (Keyboard.FocusedElement == Link6) CloseButton.Focus();
 				return;
 			}
 
