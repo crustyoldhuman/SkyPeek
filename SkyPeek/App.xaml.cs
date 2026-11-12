@@ -107,8 +107,35 @@ namespace SkyPeek
 
 		public static string ResolveCrashLogPath()
 		{
-			// Saves right next to the portable version executable and its settings file.
-			return System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SkyPeek_ErrorLog.txt");
+			try
+			{
+				uint length = 0;
+				uint result = NativeMethods.GetCurrentPackageId(ref length, IntPtr.Zero);
+				if (result == 122) // ERROR_INSUFFICIENT_BUFFER indicates packaged identity exists
+				{
+					return System.IO.Path.Combine(global::Windows.Storage.ApplicationData.Current.LocalFolder.Path, "SkyPeek_ErrorLog.txt");
+				}
+			}
+			catch { }
+
+			string exeDirectory = System.IO.Path.GetDirectoryName(Environment.ProcessPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+			string appDataPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SkyPeek", "SkyPeek_ErrorLog.txt");
+			string portablePath = System.IO.Path.Combine(exeDirectory, "SkyPeek_ErrorLog.txt");
+
+			if (System.IO.File.Exists(portablePath)) return portablePath;
+			if (System.IO.File.Exists(appDataPath)) return appDataPath;
+
+			try
+			{
+				string testFile = System.IO.Path.Combine(exeDirectory, ".write_test");
+				System.IO.File.WriteAllText(testFile, string.Empty);
+				System.IO.File.Delete(testFile);
+				return portablePath;
+			}
+			catch
+			{
+				return appDataPath;
+			}
 		}
 
 		private static void LogCrash(Exception ex, string source)

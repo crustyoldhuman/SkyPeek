@@ -68,6 +68,10 @@ namespace SkyPeek
 		[return: MarshalAs(UnmanagedType.Bool)]
 		internal static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+		[System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054:Use 'LibraryImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time", Justification = ".NET source generator fails to marshal ref uint")]
+		[DllImport("kernel32.dll", ExactSpelling = true)]
+		internal static extern uint GetCurrentPackageId(ref uint packagePathLength, IntPtr packagePath);
+
 		[LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
 		internal static partial uint RegisterWindowMessage(string lpString);
 		internal const int NIN_SELECT = 0x400; // Left-click/Enter
