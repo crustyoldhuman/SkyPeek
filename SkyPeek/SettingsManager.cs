@@ -163,8 +163,35 @@ namespace SkyPeek
 			{
 				if (File.Exists(_settingsPath))
 				{
-					string json = File.ReadAllText(_settingsPath);
-					AppConfig.Current = JsonSerializer.Deserialize<AppConfig>(json, _jsonOptions) ?? new AppConfig();
+					try
+					{
+						string json = File.ReadAllText(_settingsPath);
+						AppConfig.Current = JsonSerializer.Deserialize<AppConfig>(json, _jsonOptions) ?? new AppConfig();
+					}
+					catch (System.Exception ex1)
+					{
+						try
+						{
+							if (File.Exists(_settingsPath + ".bak"))
+							{
+								string bakJson = File.ReadAllText(_settingsPath + ".bak");
+								AppConfig.Current = JsonSerializer.Deserialize<AppConfig>(bakJson, _jsonOptions) ?? new AppConfig();
+							}
+							else
+							{
+								throw new System.IO.FileNotFoundException("No backup file exists to recover from.");
+							}
+						}
+						catch (System.Exception ex2)
+						{
+							try
+							{
+								string logPath = Path.Combine(GetSettingsDirectory(), "error.log");
+								File.AppendAllText(logPath, $"[{System.DateTime.Now:O}] Settings load failed. Primary: {ex1.Message} | Backup: {ex2.Message}{Environment.NewLine}");
+							}
+							catch { } // Swallow log failure to guarantee no UI interruption
+						}
+					}
 				}
 
 				if (!AppConfig.Current.HasCheckedOSAnimationSettings)
@@ -181,7 +208,6 @@ namespace SkyPeek
 
 		public static void Save()
 		{
-			int retries = 3;
 			string tempPath = _settingsPath + ".tmp";
 			string json;
 
@@ -233,7 +259,19 @@ namespace SkyPeek
 					SavedLocations = [.. AppConfig.Current.SavedLocations],
 					DismissedAlerts = [.. AppConfig.Current.DismissedAlerts],
 					SeenBackgroundAlertIds = [.. AppConfig.Current.SeenBackgroundAlertIds],
-					WeatherCache = new System.Collections.Concurrent.ConcurrentDictionary<string, CachedWeatherData>(AppConfig.Current.WeatherCache.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)),
+					WeatherCache = new System.Collections.Concurrent.ConcurrentDictionary<string, CachedWeatherData>(
+						AppConfig.Current.WeatherCache.ToDictionary(
+							kvp => kvp.Key,
+							kvp =>
+							{
+								var copy = new CachedWeatherData();
+								copy.CopyScalarPropertiesFrom(kvp.Value);
+								copy.HourlyData = [.. kvp.Value.HourlyData];
+								copy.DailyData = [.. kvp.Value.DailyData];
+								return copy;
+							}
+						)
+					),
 					HasSeenOnboarding = AppConfig.Current.HasSeenOnboarding,
 					HasSeenTrayBalloon = AppConfig.Current.HasSeenTrayBalloon
 				};
@@ -241,28 +279,28 @@ namespace SkyPeek
 				json = JsonSerializer.Serialize(snapshot, _jsonOptions);
 			}
 
-			while (retries > 0)
+			try
+			{
+				Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
+				File.WriteAllText(tempPath, json);
+
+				if (File.Exists(_settingsPath))
+				{
+					File.Replace(tempPath, _settingsPath, _settingsPath + ".bak", ignoreMetadataErrors: true);
+				}
+				else
+				{
+					File.Move(tempPath, _settingsPath);
+				}
+			}
+			catch (System.Exception ex)
 			{
 				try
 				{
-					Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
-					File.WriteAllText(tempPath, json);
-					break; // Success, exit the loop
+					string logPath = Path.Combine(GetSettingsDirectory(), "error.log");
+					File.AppendAllText(logPath, $"[{System.DateTime.Now:O}] Settings save failed: {ex.Message}{Environment.NewLine}");
 				}
-				catch (System.Exception ex)
-				{
-					retries--;
-					if (retries == 0)
-					{
-						try
-						{
-							string logPath = Path.Combine(GetSettingsDirectory(), "error.log");
-							File.AppendAllText(logPath, $"[{System.DateTime.Now:O}] Final settings save attempt failed: {ex.Message}{Environment.NewLine}");
-						}
-						catch { } // Swallow log failure to guarantee no UI interruption
-					}
-					System.Threading.Thread.Sleep(50); // Wait for the background collection modification or OS file lock to finish
-				}
+				catch { } // Swallow log failure to guarantee no UI interruption
 			}
 		}
 
