@@ -81,7 +81,10 @@ namespace SkyPeek
 				foreach (var h in data.HourlyData) h.IconPath = WeatherService.GetIconPath(h.WeatherCode, h.IsDay);
 			}
 			CurrentWeather = data;
-			AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+			lock (AppConfig.Current.ConfigLock)
+			{
+				AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+			}
 			await System.Threading.Tasks.Task.CompletedTask;
 		}
 
@@ -200,7 +203,10 @@ namespace SkyPeek
 
 					if (!string.IsNullOrEmpty(SelectedLocationName))
 					{
-						AppConfig.Current.WeatherCache[SelectedLocationName] = _currentWeather;
+						lock (AppConfig.Current.ConfigLock)
+						{
+							AppConfig.Current.WeatherCache[SelectedLocationName] = _currentWeather;
+						}
 						System.Windows.Application.Current.Dispatcher.Invoke(() =>
 						{
 							if (System.Windows.Application.Current.MainWindow is MainWindow mw)

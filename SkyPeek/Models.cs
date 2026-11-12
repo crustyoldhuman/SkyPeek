@@ -348,6 +348,22 @@ namespace SkyPeek
 			Notify(string.Empty);
 		}
 	}
+	public static class LocationAbbreviations
+	{
+		public static readonly System.Collections.Generic.Dictionary<string, string> States = new(System.StringComparer.OrdinalIgnoreCase)
+		{
+			{"Alabama", "AL"}, {"Alaska", "AK"}, {"Arizona", "AZ"}, {"Arkansas", "AR"}, {"California", "CA"}, {"Colorado", "CO"}, {"Connecticut", "CT"}, {"Delaware", "DE"}, {"Florida", "FL"}, {"Georgia", "GA"}, {"Hawaii", "HI"}, {"Idaho", "ID"}, {"Illinois", "IL"}, {"Indiana", "IN"}, {"Iowa", "IA"}, {"Kansas", "KS"}, {"Kentucky", "KY"}, {"Louisiana", "LA"}, {"Maine", "ME"}, {"Maryland", "MD"}, {"Massachusetts", "MA"}, {"Michigan", "MI"}, {"Minnesota", "MN"}, {"Mississippi", "MS"}, {"Missouri", "MO"}, {"Montana", "MT"}, {"Nebraska", "NE"}, {"Nevada", "NV"}, {"New Hampshire", "NH"}, {"New Jersey", "NJ"}, {"New Mexico", "NM"}, {"New York", "NY"}, {"North Carolina", "NC"}, {"North Dakota", "ND"}, {"Ohio", "OH"}, {"Oklahoma", "OK"}, {"Oregon", "OR"}, {"Pennsylvania", "PA"}, {"Rhode Island", "RI"}, {"South Carolina", "SC"}, {"South Dakota", "SD"}, {"Tennessee", "TN"}, {"Texas", "TX"}, {"Utah", "UT"}, {"Vermont", "VT"}, {"Virginia", "VA"}, {"Washington", "WA"}, {"West Virginia", "WV"}, {"Wisconsin", "WI"}, {"Wyoming", "WY"},
+			{"Alberta", "AB"}, {"British Columbia", "BC"}, {"Manitoba", "MB"}, {"New Brunswick", "NB"}, {"Newfoundland and Labrador", "NL"}, {"Northwest Territories", "NT"}, {"Nova Scotia", "NS"}, {"Nunavut", "NU"}, {"Ontario", "ON"}, {"Prince Edward Island", "PE"}, {"Quebec", "QC"}, {"Saskatchewan", "SK"}, {"Yukon", "YT"},
+			{"New South Wales", "NSW"}, {"Victoria", "VIC"}, {"Queensland", "QLD"}, {"Western Australia", "WA"}, {"South Australia", "SA"}, {"Tasmania", "TAS"}, {"Australian Capital Territory", "ACT"}, {"Northern Territory", "NT"},
+			{"England", "ENG"}, {"Scotland", "SCT"}, {"Wales", "WAL"}, {"Northern Ireland", "NIR"}
+		};
+
+		public static readonly System.Collections.Generic.Dictionary<string, string> Countries = new(System.StringComparer.OrdinalIgnoreCase)
+		{
+			{"United States", "USA"}, {"United Kingdom", "UK"}, {"New Zealand", "NZ"}
+		};
+	}
+
 	public class GeoSearchResult : System.ComponentModel.INotifyPropertyChanged
 	{
 		public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged { add { } remove { } }
@@ -370,34 +386,21 @@ namespace SkyPeek
 			}
 		}
 
-		private static readonly System.Collections.Generic.Dictionary<string, string> _stateAbbreviations = new(System.StringComparer.OrdinalIgnoreCase)
-		{
-			{"Alabama", "AL"}, {"Alaska", "AK"}, {"Arizona", "AZ"}, {"Arkansas", "AR"}, {"California", "CA"}, {"Colorado", "CO"}, {"Connecticut", "CT"}, {"Delaware", "DE"}, {"Florida", "FL"}, {"Georgia", "GA"}, {"Hawaii", "HI"}, {"Idaho", "ID"}, {"Illinois", "IL"}, {"Indiana", "IN"}, {"Iowa", "IA"}, {"Kansas", "KS"}, {"Kentucky", "KY"}, {"Louisiana", "LA"}, {"Maine", "ME"}, {"Maryland", "MD"}, {"Massachusetts", "MA"}, {"Michigan", "MI"}, {"Minnesota", "MN"}, {"Mississippi", "MS"}, {"Missouri", "MO"}, {"Montana", "MT"}, {"Nebraska", "NE"}, {"Nevada", "NV"}, {"New Hampshire", "NH"}, {"New Jersey", "NJ"}, {"New Mexico", "NM"}, {"New York", "NY"}, {"North Carolina", "NC"}, {"North Dakota", "ND"}, {"Ohio", "OH"}, {"Oklahoma", "OK"}, {"Oregon", "OR"}, {"Pennsylvania", "PA"}, {"Rhode Island", "RI"}, {"South Carolina", "SC"}, {"South Dakota", "SD"}, {"Tennessee", "TN"}, {"Texas", "TX"}, {"Utah", "UT"}, {"Vermont", "VT"}, {"Virginia", "VA"}, {"Washington", "WA"}, {"West Virginia", "WV"}, {"Wisconsin", "WI"}, {"Wyoming", "WY"},
-			{"Alberta", "AB"}, {"British Columbia", "BC"}, {"Manitoba", "MB"}, {"New Brunswick", "NB"}, {"Newfoundland and Labrador", "NL"}, {"Northwest Territories", "NT"}, {"Nova Scotia", "NS"}, {"Nunavut", "NU"}, {"Ontario", "ON"}, {"Prince Edward Island", "PE"}, {"Quebec", "QC"}, {"Saskatchewan", "SK"}, {"Yukon", "YT"},
-			{"New South Wales", "NSW"}, {"Victoria", "VIC"}, {"Queensland", "QLD"}, {"Western Australia", "WA"}, {"South Australia", "SA"}, {"Tasmania", "TAS"}, {"Australian Capital Territory", "ACT"}, {"Northern Territory", "NT"},
-			{"England", "ENG"}, {"Scotland", "SCT"}, {"Wales", "WAL"}, {"Northern Ireland", "NIR"}
-		};
-
 		private string StateAbbrev
 		{
 			get
 			{
 				if (string.IsNullOrEmpty(Admin1)) return "";
-				return _stateAbbreviations.TryGetValue(Admin1, out string? abbrev) ? abbrev : Admin1;
+				return LocationAbbreviations.States.TryGetValue(Admin1, out string? abbrev) ? abbrev : Admin1;
 			}
 		}
-
-		private static readonly System.Collections.Generic.Dictionary<string, string> _countryAbbreviations = new(System.StringComparer.OrdinalIgnoreCase)
-		{
-			{"United States", "USA"}, {"United Kingdom", "UK"}, {"New Zealand", "NZ"}
-		};
 
 		private string CountryAbbrev
 		{
 			get
 			{
 				if (string.IsNullOrEmpty(Country)) return "";
-				return _countryAbbreviations.TryGetValue(Country, out string? abbrev) ? abbrev : Country;
+				return LocationAbbreviations.Countries.TryGetValue(Country, out string? abbrev) ? abbrev : Country;
 			}
 		}
 	}
@@ -662,34 +665,21 @@ namespace SkyPeek
 			}
 		}
 
-		private static readonly System.Collections.Generic.Dictionary<string, string> _stateAbbreviations = new(System.StringComparer.OrdinalIgnoreCase)
-		{
-			{"Alabama", "AL"}, {"Alaska", "AK"}, {"Arizona", "AZ"}, {"Arkansas", "AR"}, {"California", "CA"}, {"Colorado", "CO"}, {"Connecticut", "CT"}, {"Delaware", "DE"}, {"Florida", "FL"}, {"Georgia", "GA"}, {"Hawaii", "HI"}, {"Idaho", "ID"}, {"Illinois", "IL"}, {"Indiana", "IN"}, {"Iowa", "IA"}, {"Kansas", "KS"}, {"Kentucky", "KY"}, {"Louisiana", "LA"}, {"Maine", "ME"}, {"Maryland", "MD"}, {"Massachusetts", "MA"}, {"Michigan", "MI"}, {"Minnesota", "MN"}, {"Mississippi", "MS"}, {"Missouri", "MO"}, {"Montana", "MT"}, {"Nebraska", "NE"}, {"Nevada", "NV"}, {"New Hampshire", "NH"}, {"New Jersey", "NJ"}, {"New Mexico", "NM"}, {"New York", "NY"}, {"North Carolina", "NC"}, {"North Dakota", "ND"}, {"Ohio", "OH"}, {"Oklahoma", "OK"}, {"Oregon", "OR"}, {"Pennsylvania", "PA"}, {"Rhode Island", "RI"}, {"South Carolina", "SC"}, {"South Dakota", "SD"}, {"Tennessee", "TN"}, {"Texas", "TX"}, {"Utah", "UT"}, {"Vermont", "VT"}, {"Virginia", "VA"}, {"Washington", "WA"}, {"West Virginia", "WV"}, {"Wisconsin", "WI"}, {"Wyoming", "WY"},
-			{"Alberta", "AB"}, {"British Columbia", "BC"}, {"Manitoba", "MB"}, {"New Brunswick", "NB"}, {"Newfoundland and Labrador", "NL"}, {"Northwest Territories", "NT"}, {"Nova Scotia", "NS"}, {"Nunavut", "NU"}, {"Ontario", "ON"}, {"Prince Edward Island", "PE"}, {"Quebec", "QC"}, {"Saskatchewan", "SK"}, {"Yukon", "YT"},
-			{"New South Wales", "NSW"}, {"Victoria", "VIC"}, {"Queensland", "QLD"}, {"Western Australia", "WA"}, {"South Australia", "SA"}, {"Tasmania", "TAS"}, {"Australian Capital Territory", "ACT"}, {"Northern Territory", "NT"},
-			{"England", "ENG"}, {"Scotland", "SCT"}, {"Wales", "WAL"}, {"Northern Ireland", "NIR"}
-		};
-
 		private string StateAbbrev
 		{
 			get
 			{
 				if (string.IsNullOrEmpty(State)) return "";
-				return _stateAbbreviations.TryGetValue(State, out string? abbrev) ? abbrev : State;
+				return LocationAbbreviations.States.TryGetValue(State, out string? abbrev) ? abbrev : State;
 			}
 		}
-
-		private static readonly System.Collections.Generic.Dictionary<string, string> _countryAbbreviations = new(System.StringComparer.OrdinalIgnoreCase)
-		{
-			{"United States", "USA"}, {"United Kingdom", "UK"}, {"New Zealand", "NZ"}
-		};
 
 		private string CountryAbbrev
 		{
 			get
 			{
 				if (string.IsNullOrEmpty(Country)) return "";
-				return _countryAbbreviations.TryGetValue(Country, out string? abbrev) ? abbrev : Country;
+				return LocationAbbreviations.Countries.TryGetValue(Country, out string? abbrev) ? abbrev : Country;
 			}
 		}
 

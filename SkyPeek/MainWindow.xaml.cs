@@ -79,9 +79,14 @@ namespace SkyPeek
 
 			try
 			{
-				if (AppConfig.Current.SavedLocations.Count == 0 && !string.IsNullOrEmpty(AppConfig.Current.City))
+				System.Collections.Generic.List<SavedLocation> currentLocations;
+				lock (AppConfig.Current.ConfigLock)
 				{
-					AppConfig.Current.SavedLocations.Add(new SavedLocation { City = AppConfig.Current.City, State = AppConfig.Current.State, Country = AppConfig.Current.Country });
+					if (AppConfig.Current.SavedLocations.Count == 0 && !string.IsNullOrEmpty(AppConfig.Current.City))
+					{
+						AppConfig.Current.SavedLocations.Add(new SavedLocation { City = AppConfig.Current.City, State = AppConfig.Current.State, Country = AppConfig.Current.Country });
+					}
+					currentLocations = [.. AppConfig.Current.SavedLocations];
 				}
 
 				int interval = AppConfig.Current.RefreshInterval > 0 ? AppConfig.Current.RefreshInterval : 15;
@@ -90,7 +95,7 @@ namespace SkyPeek
 				System.Collections.Generic.List<double> lons = [];
 				System.Collections.Generic.List<string> displayCities = [];
 
-				foreach (var loc in AppConfig.Current.SavedLocations.ToList())
+				foreach (var loc in currentLocations)
 				{
 					string key = loc.DisplayName;
 					bool isHome = loc.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && loc.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase);
@@ -153,11 +158,20 @@ namespace SkyPeek
 								if (hasNewAlert) SettingsManager.Save();
 							}
 
-							AppConfig.Current.WeatherCache[key] = data;
+							lock (AppConfig.Current.ConfigLock)
+							{
+								AppConfig.Current.WeatherCache[key] = data;
+							}
 
 							if (AppConfig.Current.EnableWeatherAlerts)
 							{
-								Application.Current.Dispatcher.Invoke(() => _slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache));
+								Application.Current.Dispatcher.Invoke(() =>
+								{
+									lock (AppConfig.Current.ConfigLock)
+									{
+										_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+									}
+								});
 
 								if (hasNewAlert && AppConfig.Current.EnableAlertTone && loc.AlertFilterLevel > 0 && loc.PlayAlertTone)
 								{
@@ -189,7 +203,10 @@ namespace SkyPeek
 
 				Application.Current.Dispatcher.Invoke(() =>
 				{
-					_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+					lock (AppConfig.Current.ConfigLock)
+					{
+						_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+					}
 				});
 			}
 			catch (System.Exception)
@@ -219,7 +236,11 @@ namespace SkyPeek
 				if (city.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && state.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase))
 				{
 					_isBootLoading = false;
-					var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(city, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(state, System.StringComparison.OrdinalIgnoreCase));
+					SavedLocation? homeLoc;
+					lock (AppConfig.Current.ConfigLock)
+					{
+						homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(city, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(state, System.StringComparison.OrdinalIgnoreCase));
+					}
 
 					if (isOffline)
 					{
@@ -292,9 +313,12 @@ namespace SkyPeek
 				}
 			}
 
-			if (AppConfig.Current.SavedLocations.Count == 0)
+			lock (AppConfig.Current.ConfigLock)
 			{
-				AppConfig.Current.SavedLocations.Add(new SavedLocation { City = AppConfig.Current.City, State = AppConfig.Current.State, Country = AppConfig.Current.Country });
+				if (AppConfig.Current.SavedLocations.Count == 0)
+				{
+					AppConfig.Current.SavedLocations.Add(new SavedLocation { City = AppConfig.Current.City, State = AppConfig.Current.State, Country = AppConfig.Current.Country });
+				}
 			}
 
 			if (_slideoutInstance is not null)
@@ -315,7 +339,11 @@ namespace SkyPeek
             _ = PerformInitialBootSequenceAsync();
 #else
 			_isBootLoading = false;
-			var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			SavedLocation? homeLoc;
+			lock (AppConfig.Current.ConfigLock)
+			{
+				homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			}
 			if (homeLoc != null && AppConfig.Current.WeatherCache.TryGetValue(homeLoc.DisplayName, out var data))
 			{
 				ApplyWeatherToUI(data, homeLoc.DisplayName, false);
@@ -337,7 +365,11 @@ namespace SkyPeek
 
 		private async System.Threading.Tasks.Task PerformInitialBootSequenceAsync()
 		{
-			bool isFreshInstall = AppConfig.Current.SavedLocations.Count == 1 && AppConfig.Current.SavedLocations[0].City == "Chicago" && AppConfig.Current.SavedLocations[0].State == "Illinois";
+			bool isFreshInstall;
+			lock (AppConfig.Current.ConfigLock)
+			{
+				isFreshInstall = AppConfig.Current.SavedLocations.Count == 1 && AppConfig.Current.SavedLocations[0].City == "Chicago" && AppConfig.Current.SavedLocations[0].State == "Illinois";
+			}
 
 			if (!AppConfig.Current.HasSeenTrayBalloon)
 			{
@@ -381,28 +413,31 @@ namespace SkyPeek
 					await SyncWindowsLocationAsync();
 				}
 
-				var winLoc = AppConfig.Current.SavedLocations.Find(l => l.IsWindowsLocation);
-				if (winLoc != null)
+				var ipLoc = await WeatherService.GetIpLocationAsync();
+
+				lock (AppConfig.Current.ConfigLock)
 				{
-					AppConfig.Current.SavedLocations.RemoveAll(l => l.City == "Chicago" && l.State == "Illinois" && !l.IsWindowsLocation);
-					AppConfig.Current.City = winLoc.City;
-					AppConfig.Current.State = winLoc.State;
-					AppConfig.Current.Country = winLoc.Country;
-					SettingsManager.Save();
-				}
-				else
-				{
-					var ipLoc = await WeatherService.GetIpLocationAsync();
-					if (ipLoc.HasValue)
+					var winLoc = AppConfig.Current.SavedLocations.Find(l => l.IsWindowsLocation);
+					if (winLoc != null)
 					{
-						AppConfig.Current.SavedLocations.RemoveAll(l => l.City == "Chicago" && l.State == "Illinois");
-						AppConfig.Current.SavedLocations.Add(new SavedLocation { City = ipLoc.Value.City, State = ipLoc.Value.State, Country = ipLoc.Value.Country });
-						AppConfig.Current.City = ipLoc.Value.City;
-						AppConfig.Current.State = ipLoc.Value.State;
-						AppConfig.Current.Country = ipLoc.Value.Country;
-						SettingsManager.Save();
+						AppConfig.Current.SavedLocations.RemoveAll(l => l.City == "Chicago" && l.State == "Illinois" && !l.IsWindowsLocation);
+						AppConfig.Current.City = winLoc.City;
+						AppConfig.Current.State = winLoc.State;
+						AppConfig.Current.Country = winLoc.Country;
+					}
+					else
+					{
+						if (ipLoc.HasValue)
+						{
+							AppConfig.Current.SavedLocations.RemoveAll(l => l.City == "Chicago" && l.State == "Illinois");
+							AppConfig.Current.SavedLocations.Add(new SavedLocation { City = ipLoc.Value.City, State = ipLoc.Value.State, Country = ipLoc.Value.Country });
+							AppConfig.Current.City = ipLoc.Value.City;
+							AppConfig.Current.State = ipLoc.Value.State;
+							AppConfig.Current.Country = ipLoc.Value.Country;
+						}
 					}
 				}
+				SettingsManager.Save();
 
 				if (_slideoutInstance != null)
 				{
@@ -498,7 +533,11 @@ namespace SkyPeek
 
 					if (_isBootLoading || _isRefreshingCache) return; // Prevent overwriting the boot loading screen with stale cache data
 
-					var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+					SavedLocation? homeLoc;
+					lock (AppConfig.Current.ConfigLock)
+					{
+						homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+					}
 					if (homeLoc != null && (_slideoutInstance.IsViewingTemporaryLocation || _slideoutInstance.ViewModel.SelectedLocationName != homeLoc.DisplayName))
 					{
 						_slideoutInstance.IsViewingTemporaryLocation = false;
@@ -521,19 +560,22 @@ namespace SkyPeek
 
 			_slideoutInstance.AlertDismissed += (s, alertId) =>
 			{
-				AppConfig.Current.DismissedAlerts.Add(alertId);
-				AppConfig.Current.SeenBackgroundAlertIds.Add(alertId);
-
-				CurrentWeather?.AlertsData?.RemoveAll(a => a.Id == alertId);
-				_slideoutInstance.ViewModel.CurrentWeather?.AlertsData?.RemoveAll(a => a.Id == alertId);
-				foreach (var cached in AppConfig.Current.WeatherCache.Values) cached.AlertsData?.RemoveAll(a => a.Id == alertId);
-
-				foreach (var loc in AppConfig.Current.SavedLocations)
+				lock (AppConfig.Current.ConfigLock)
 				{
-					loc.ActiveAlertIds.Remove(alertId);
-					if (loc.ActiveAlertIds.Count == 0)
+					AppConfig.Current.DismissedAlerts.Add(alertId);
+					AppConfig.Current.SeenBackgroundAlertIds.Add(alertId);
+
+					CurrentWeather?.AlertsData?.RemoveAll(a => a.Id == alertId);
+					_slideoutInstance.ViewModel.CurrentWeather?.AlertsData?.RemoveAll(a => a.Id == alertId);
+					foreach (var cached in AppConfig.Current.WeatherCache.Values) cached.AlertsData?.RemoveAll(a => a.Id == alertId);
+
+					foreach (var loc in AppConfig.Current.SavedLocations)
 					{
-						loc.HasActiveAlert = false;
+						loc.ActiveAlertIds.Remove(alertId);
+						if (loc.ActiveAlertIds.Count == 0)
+						{
+							loc.HasActiveAlert = false;
+						}
 					}
 				}
 
@@ -541,7 +583,10 @@ namespace SkyPeek
 
 				Application.Current.Dispatcher.Invoke(() =>
 				{
-					_slideoutInstance.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+					lock (AppConfig.Current.ConfigLock)
+					{
+						_slideoutInstance.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+					}
 					_slideoutInstance.RefreshSavedLocations();
 				});
 
@@ -551,7 +596,11 @@ namespace SkyPeek
 			LoadSettings();
 			SetupTimer();
 
-			var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			SavedLocation? homeLoc;
+			lock (AppConfig.Current.ConfigLock)
+			{
+				homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			}
 			if (homeLoc != null && AppConfig.Current.WeatherCache.TryGetValue(homeLoc.DisplayName, out var cachedData))
 			{
 				double intervalMinutes = AppConfig.Current.RefreshInterval > 0 ? AppConfig.Current.RefreshInterval : 15;
@@ -601,7 +650,11 @@ namespace SkyPeek
 			double intervalMinutes = AppConfig.Current.RefreshInterval > 0 ? AppConfig.Current.RefreshInterval : 15;
 			System.TimeSpan standardInterval = System.TimeSpan.FromMinutes(intervalMinutes);
 
-			var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			SavedLocation? homeLoc;
+			lock (AppConfig.Current.ConfigLock)
+			{
+				homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			}
 
 			DateTime lastUpdated = DateTime.MinValue;
 			if (homeLoc != null && AppConfig.Current.WeatherCache.TryGetValue(homeLoc.DisplayName, out var cachedData))
@@ -748,7 +801,11 @@ namespace SkyPeek
 						if (!_isOffline)
 						{
 							_isOffline = true;
-							var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+							SavedLocation? homeLoc;
+							lock (AppConfig.Current.ConfigLock)
+							{
+								homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+							}
 							if (homeLoc != null && AppConfig.Current.WeatherCache.ContainsKey(homeLoc.DisplayName))
 							{
 								if (!_recoveryTimer.IsEnabled) _recoveryTimer.Start();
@@ -882,7 +939,10 @@ namespace SkyPeek
 
 		public void UpdateSlideoutAlertsVisibility()
 		{
-			foreach (var loc in AppConfig.Current.SavedLocations) loc.UpdateAlertToggleOpacity();
+			lock (AppConfig.Current.ConfigLock)
+			{
+				foreach (var loc in AppConfig.Current.SavedLocations) loc.UpdateAlertToggleOpacity();
+			}
 			if (_slideoutInstance is not null)
 			{
 				_slideoutInstance.ViewModel.AlertState.GlobalAlertsVisibility = AppConfig.Current.EnableWeatherAlerts ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
@@ -1063,29 +1123,32 @@ namespace SkyPeek
 			{
 				bool changed = false;
 
-				for (int i = AppConfig.Current.SavedLocations.Count - 1; i >= 0; i--)
+				lock (AppConfig.Current.ConfigLock)
 				{
-					var loc = AppConfig.Current.SavedLocations[i];
-
-					if (loc.IsWindowsLocation)
+					for (int i = AppConfig.Current.SavedLocations.Count - 1; i >= 0; i--)
 					{
-						loc.IsWindowsLocation = false;
-						changed = true;
-					}
+						var loc = AppConfig.Current.SavedLocations[i];
 
-					if (loc.AddedByGps)
-					{
-						bool isHome = loc.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && loc.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase);
-
-						if (isHome)
+						if (loc.IsWindowsLocation)
 						{
-							loc.AddedByGps = false; // Preserve the location, but strip its GPS origin identity
+							loc.IsWindowsLocation = false;
 							changed = true;
 						}
-						else
+
+						if (loc.AddedByGps)
 						{
-							AppConfig.Current.SavedLocations.RemoveAt(i);
-							changed = true;
+							bool isHome = loc.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && loc.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase);
+
+							if (isHome)
+							{
+								loc.AddedByGps = false; // Preserve the location, but strip its GPS origin identity
+								changed = true;
+							}
+							else
+							{
+								AppConfig.Current.SavedLocations.RemoveAt(i);
+								changed = true;
+							}
 						}
 					}
 				}
@@ -1130,43 +1193,46 @@ namespace SkyPeek
 
 					bool listChanged = false;
 
-					var oldGps = AppConfig.Current.SavedLocations.Find(l => l.AddedByGps);
-					if (oldGps != null && (!oldGps.City.Equals(locCity, System.StringComparison.OrdinalIgnoreCase) || (!string.IsNullOrEmpty(oldGps.State) && !string.IsNullOrEmpty(locState) && !oldGps.State.Equals(locState, System.StringComparison.OrdinalIgnoreCase))))
+					lock (AppConfig.Current.ConfigLock)
 					{
-						AppConfig.Current.SavedLocations.Remove(oldGps);
-						listChanged = true;
-					}
-
-					foreach (var loc in AppConfig.Current.SavedLocations)
-					{
-						if (loc.IsWindowsLocation)
+						var oldGps = AppConfig.Current.SavedLocations.Find(l => l.AddedByGps);
+						if (oldGps != null && (!oldGps.City.Equals(locCity, System.StringComparison.OrdinalIgnoreCase) || (!string.IsNullOrEmpty(oldGps.State) && !string.IsNullOrEmpty(locState) && !oldGps.State.Equals(locState, System.StringComparison.OrdinalIgnoreCase))))
 						{
-							loc.IsWindowsLocation = false;
+							AppConfig.Current.SavedLocations.Remove(oldGps);
 							listChanged = true;
 						}
-					}
 
-					var match = AppConfig.Current.SavedLocations.Find(l =>
-						l.City.Equals(locCity, System.StringComparison.OrdinalIgnoreCase) &&
-						(string.IsNullOrEmpty(l.State) || string.IsNullOrEmpty(locState) || l.State.Equals(locState, System.StringComparison.OrdinalIgnoreCase)));
-
-					if (match != null)
-					{
-						if (!match.IsWindowsLocation)
+						foreach (var loc in AppConfig.Current.SavedLocations)
 						{
-							match.IsWindowsLocation = true;
+							if (loc.IsWindowsLocation)
+							{
+								loc.IsWindowsLocation = false;
+								listChanged = true;
+							}
+						}
+
+						var match = AppConfig.Current.SavedLocations.Find(l =>
+							l.City.Equals(locCity, System.StringComparison.OrdinalIgnoreCase) &&
+							(string.IsNullOrEmpty(l.State) || string.IsNullOrEmpty(locState) || l.State.Equals(locState, System.StringComparison.OrdinalIgnoreCase)));
+
+						if (match != null)
+						{
+							if (!match.IsWindowsLocation)
+							{
+								match.IsWindowsLocation = true;
+								listChanged = true;
+							}
+						}
+						else
+						{
+							AppConfig.Current.SavedLocations.Add(new SavedLocation { City = locCity, State = locState, Country = locCountry, IsWindowsLocation = true, AddedByGps = true });
 							listChanged = true;
 						}
-					}
-					else
-					{
-						AppConfig.Current.SavedLocations.Add(new SavedLocation { City = locCity, State = locState, Country = locCountry, IsWindowsLocation = true, AddedByGps = true });
-						SettingsManager.Save();
-						listChanged = true;
 					}
 
 					if (listChanged)
 					{
+						SettingsManager.Save();
 						Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.Windows.OfType<SecondaryViews>().FirstOrDefault()?.RefreshSavedLocations());
 					}
 				}
@@ -1226,40 +1292,55 @@ namespace SkyPeek
 				var data = bulkData.FirstOrDefault();
 				if (data == null) return null;
 
-				var activeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(displayCity, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(state, System.StringComparison.OrdinalIgnoreCase) && l.Country.Equals(country, System.StringComparison.OrdinalIgnoreCase));
+				SavedLocation? activeLoc;
+				lock (AppConfig.Current.ConfigLock)
+				{
+					activeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(displayCity, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(state, System.StringComparison.OrdinalIgnoreCase) && l.Country.Equals(country, System.StringComparison.OrdinalIgnoreCase));
+				}
 				int alertFilterLevel = activeLoc?.AlertFilterLevel ?? 1;
 
 				if (AppConfig.Current.EnableWeatherAlerts && alertFilterLevel > 0)
 				{
-					data.AlertsData = await AlertService.GetAlertsAsync(latValInit, lonValInit, displayCity, country, [.. AppConfig.Current.DismissedAlerts], alertFilterLevel);
+					System.Collections.Generic.HashSet<string> dismissedAlertsCopy;
+					lock (AppConfig.Current.ConfigLock)
+					{
+						dismissedAlertsCopy = [.. AppConfig.Current.DismissedAlerts];
+					}
+					data.AlertsData = await AlertService.GetAlertsAsync(latValInit, lonValInit, displayCity, country, dismissedAlertsCopy, alertFilterLevel);
 				}
 
 				string locKeyForCache = activeLoc?.DisplayName ?? displayCity;
-				AppConfig.Current.WeatherCache[locKeyForCache] = data;
+				lock (AppConfig.Current.ConfigLock)
+				{
+					AppConfig.Current.WeatherCache[locKeyForCache] = data;
+				}
 
 				if (activeLoc != null)
 				{
 					Application.Current.Dispatcher.Invoke(() =>
 					{
-						var activeAlerts = (AppConfig.Current.EnableWeatherAlerts && activeLoc.AlertFilterLevel > 0)
-							? data.AlertsData.FindAll(a => a.SeverityLevel >= activeLoc.AlertFilterLevel)
-							: [];
-						if (activeAlerts.Count > 0)
+						lock (AppConfig.Current.ConfigLock)
 						{
-							activeLoc.HasActiveAlert = true;
-							var brush = new SolidColorBrush(Color.FromRgb(220, 53, 69));
-							brush.Freeze();
-							activeLoc.AlertIconColor = brush;
-							activeLoc.ActiveAlertIds.Clear();
-							foreach (var a in activeAlerts) activeLoc.ActiveAlertIds.Add(a.Id);
-						}
-						else
-						{
-							activeLoc.HasActiveAlert = false;
-							activeLoc.ActiveAlertIds.Clear();
-						}
+							var activeAlerts = (AppConfig.Current.EnableWeatherAlerts && activeLoc.AlertFilterLevel > 0)
+								? data.AlertsData.FindAll(a => a.SeverityLevel >= activeLoc.AlertFilterLevel)
+								: [];
+							if (activeAlerts.Count > 0)
+							{
+								activeLoc.HasActiveAlert = true;
+								var brush = new SolidColorBrush(Color.FromRgb(220, 53, 69));
+								brush.Freeze();
+								activeLoc.AlertIconColor = brush;
+								activeLoc.ActiveAlertIds.Clear();
+								foreach (var a in activeAlerts) activeLoc.ActiveAlertIds.Add(a.Id);
+							}
+							else
+							{
+								activeLoc.HasActiveAlert = false;
+								activeLoc.ActiveAlertIds.Clear();
+							}
 
-						_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+							_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+						}
 					});
 				}
 
@@ -1318,35 +1399,38 @@ namespace SkyPeek
 
 		public void ClearAllAlerts()
 		{
-			if (CurrentWeather?.AlertsData != null)
+			lock (AppConfig.Current.ConfigLock)
 			{
-				foreach (var alert in CurrentWeather.AlertsData)
+				if (CurrentWeather?.AlertsData != null)
 				{
-					AppConfig.Current.DismissedAlerts.Add(alert.Id);
-				}
-				CurrentWeather.AlertsData.Clear();
-			}
-
-			foreach (var cached in AppConfig.Current.WeatherCache.Values)
-			{
-				if (cached.AlertsData != null)
-				{
-					foreach (var alert in cached.AlertsData)
+					foreach (var alert in CurrentWeather.AlertsData)
 					{
 						AppConfig.Current.DismissedAlerts.Add(alert.Id);
 					}
-					cached.AlertsData.Clear();
+					CurrentWeather.AlertsData.Clear();
 				}
-			}
 
-			foreach (var loc in AppConfig.Current.SavedLocations)
-			{
-				foreach (var id in loc.ActiveAlertIds)
+				foreach (var cached in AppConfig.Current.WeatherCache.Values)
 				{
-					AppConfig.Current.DismissedAlerts.Add(id);
+					if (cached.AlertsData != null)
+					{
+						foreach (var alert in cached.AlertsData)
+						{
+							AppConfig.Current.DismissedAlerts.Add(alert.Id);
+						}
+						cached.AlertsData.Clear();
+					}
 				}
-				loc.HasActiveAlert = false;
-				loc.ActiveAlertIds.Clear();
+
+				foreach (var loc in AppConfig.Current.SavedLocations)
+				{
+					foreach (var id in loc.ActiveAlertIds)
+					{
+						AppConfig.Current.DismissedAlerts.Add(id);
+					}
+					loc.HasActiveAlert = false;
+					loc.ActiveAlertIds.Clear();
+				}
 			}
 
 			SettingsManager.Save();
@@ -1354,7 +1438,10 @@ namespace SkyPeek
 
 			Application.Current.Dispatcher.Invoke(() =>
 			{
-				_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+				lock (AppConfig.Current.ConfigLock)
+				{
+					_slideoutInstance?.ViewModel.AlertState.RebuildGlobalAlerts(AppConfig.Current.SavedLocations, AppConfig.Current.WeatherCache);
+				}
 				_slideoutInstance?.RefreshSavedLocations();
 			});
 		}
@@ -1439,7 +1526,11 @@ namespace SkyPeek
 				return;
 			}
 
-			var homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			SavedLocation? homeLoc;
+			lock (AppConfig.Current.ConfigLock)
+			{
+				homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+			}
 			if (homeLoc != null && AppConfig.Current.WeatherCache.TryGetValue(homeLoc.DisplayName, out var data))
 			{
 				string trayTempText = data.Temp.Length >= 3 ? data.Temp : $"{data.Temp}°";

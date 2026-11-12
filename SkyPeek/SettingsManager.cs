@@ -25,6 +25,9 @@ namespace SkyPeek
 	{
 		public static AppConfig Current { get; set; } = new();
 
+		[System.Text.Json.Serialization.JsonIgnore]
+		public readonly object ConfigLock = new();
+
 		public System.Collections.Generic.HashSet<string> PlayedAlerts { get; set; } = [];
 		public string City { get; set; } = "Chicago";
 		public string State { get; set; } = "Illinois";
@@ -179,18 +182,85 @@ namespace SkyPeek
 		public static void Save()
 		{
 			int retries = 3;
+			string tempPath = _settingsPath + ".tmp";
+			string json;
+
+			lock (AppConfig.Current.ConfigLock)
+			{
+				AppConfig snapshot = new()
+				{
+					PlayedAlerts = [.. AppConfig.Current.PlayedAlerts],
+					City = AppConfig.Current.City,
+					State = AppConfig.Current.State,
+					Country = AppConfig.Current.Country,
+					RefreshInterval = AppConfig.Current.RefreshInterval,
+					StartOnBoot = AppConfig.Current.StartOnBoot,
+					FlipWindArrow = AppConfig.Current.FlipWindArrow,
+					UseCelsius = AppConfig.Current.UseCelsius,
+					Use24HourClock = AppConfig.Current.Use24HourClock,
+					UseKph = AppConfig.Current.UseKph,
+					UseCm = AppConfig.Current.UseCm,
+					UseWindowsLocation = AppConfig.Current.UseWindowsLocation,
+					UseAccentColor = AppConfig.Current.UseAccentColor,
+					UseTransparency = AppConfig.Current.UseTransparency,
+					DisableAnimations = AppConfig.Current.DisableAnimations,
+					SlideoutScale = AppConfig.Current.SlideoutScale,
+					InfoWindowWidth = AppConfig.Current.InfoWindowWidth,
+					InfoWindowHeight = AppConfig.Current.InfoWindowHeight,
+					SettingsWindowWidth = AppConfig.Current.SettingsWindowWidth,
+					SettingsWindowHeight = AppConfig.Current.SettingsWindowHeight,
+					SettingsLeft = AppConfig.Current.SettingsLeft,
+					SettingsTop = AppConfig.Current.SettingsTop,
+					EnableWeatherAlerts = AppConfig.Current.EnableWeatherAlerts,
+					EnableAlertTone = AppConfig.Current.EnableAlertTone,
+					AlertVolume = AppConfig.Current.AlertVolume,
+					SelectedAlertTone = AppConfig.Current.SelectedAlertTone,
+					EnableTrayAlertColors = AppConfig.Current.EnableTrayAlertColors,
+					EnableHotkey = AppConfig.Current.EnableHotkey,
+					HotkeyModifiers = AppConfig.Current.HotkeyModifiers,
+					HotkeyKey = AppConfig.Current.HotkeyKey,
+					PopupPosition = AppConfig.Current.PopupPosition,
+					PreferTenDayAgenda = AppConfig.Current.PreferTenDayAgenda,
+					PreferHourlyAgendaView = AppConfig.Current.PreferHourlyAgendaView,
+					DefaultView = AppConfig.Current.DefaultView,
+					ThemePreference = AppConfig.Current.ThemePreference,
+					LastLocManCountry = AppConfig.Current.LastLocManCountry,
+					LastLocManState = AppConfig.Current.LastLocManState,
+					UseAnimatedIcons = AppConfig.Current.UseAnimatedIcons,
+					HasCheckedOSAnimationSettings = AppConfig.Current.HasCheckedOSAnimationSettings,
+					LastDismissedUpdateVersion = AppConfig.Current.LastDismissedUpdateVersion,
+					KnownUpdateVersion = AppConfig.Current.KnownUpdateVersion,
+					SavedLocations = [.. AppConfig.Current.SavedLocations],
+					DismissedAlerts = [.. AppConfig.Current.DismissedAlerts],
+					SeenBackgroundAlertIds = [.. AppConfig.Current.SeenBackgroundAlertIds],
+					WeatherCache = new System.Collections.Concurrent.ConcurrentDictionary<string, CachedWeatherData>(AppConfig.Current.WeatherCache.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)),
+					HasSeenOnboarding = AppConfig.Current.HasSeenOnboarding,
+					HasSeenTrayBalloon = AppConfig.Current.HasSeenTrayBalloon
+				};
+
+				json = JsonSerializer.Serialize(snapshot, _jsonOptions);
+			}
+
 			while (retries > 0)
 			{
 				try
 				{
 					Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
-					string json = JsonSerializer.Serialize(AppConfig.Current, _jsonOptions);
-					File.WriteAllText(_settingsPath, json);
+					File.WriteAllText(tempPath, json);
 					break; // Success, exit the loop
 				}
-				catch (System.Exception)
+				catch (System.Exception ex)
 				{
 					retries--;
+					if (retries == 0)
+					{
+						try
+						{
+							string logPath = Path.Combine(GetSettingsDirectory(), "error.log");
+							File.AppendAllText(logPath, $"[{System.DateTime.Now:O}] Final settings save attempt failed: {ex.Message}{Environment.NewLine}");
+						}
+						catch { } // Swallow log failure to guarantee no UI interruption
+					}
 					System.Threading.Thread.Sleep(50); // Wait for the background collection modification or OS file lock to finish
 				}
 			}
