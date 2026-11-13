@@ -219,16 +219,6 @@ SkyPeek connects to various free weather services to provide all of its features
 - For a genuine issue with the app (like if you've discovered an error log by your settings file) breaking or failing to do it's weather duties properly, please submit an issue here on GitHub. NOTE: I will check here periodically but again, SkyPeek is not my fulltime job, but a passion project.
   - https://github.com/crustyoldhuman/SkyPeek/issues
 
-## Version Changelog
-
-- **1.0.0** - Initial release. We're feature complete, and ready to peek.
-
-## User License
-
-SkyPeek is distributed under the GNU General Public License (GPL). In short, this means you are free to use, modify, and distribute the software, provided that any modified versions or derivative works are also open-source and licensed under the identical GPL terms.
-
-For more information see here: https://www.gnu.org/licenses/gpl-3.0.en.html
-
 ## Shameless Plugs
 
 <h3><p align="center">Gaming Streams</h3></p>
