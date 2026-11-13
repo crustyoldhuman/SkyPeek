@@ -81,6 +81,10 @@ namespace SkyPeek
 		internal static partial int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
 		internal const int MDT_EFFECTIVE_DPI = 0;
 
+		[LibraryImport("user32.dll")]
+		internal static partial IntPtr SetThreadDpiAwarenessContext(IntPtr dpiContext);
+		internal static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = new(-4);
+
 		internal const uint SWP_NOSIZE = 0x0001;
 		internal const uint SWP_NOZORDER = 0x0004;
 		internal const uint SWP_NOACTIVATE = 0x0010;

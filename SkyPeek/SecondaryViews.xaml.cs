@@ -950,13 +950,24 @@ namespace SkyPeek
 				System.Windows.Input.Keyboard.Focus(this);
 			}));
 
-			var windowDpi = VisualTreeHelper.GetDpi(this);
-			double scaleX = windowDpi.DpiScaleX;
-			double scaleY = windowDpi.DpiScaleY;
+			NativeMethods.GetCursorPosition(out SkyPeek.POINT cursorPos);
+			IntPtr hMonitor = NativeMethods.MonitorFromPoint(cursorPos, NativeMethods.MONITOR_DEFAULTTONEAREST);
+			double scaleX = 1.0, scaleY = 1.0;
+
+			if (NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpiX, out uint dpiY) == 0)
+			{
+				scaleX = dpiX / 96.0;
+				scaleY = dpiY / 96.0;
+			}
+			else
+			{
+				var windowDpi = VisualTreeHelper.GetDpi(this);
+				scaleX = windowDpi.DpiScaleX;
+				scaleY = windowDpi.DpiScaleY;
+			}
 
 			var taskbarPos = GetTaskbarPosition();
 
-			NativeMethods.GetCursorPosition(out SkyPeek.POINT cursorPos);
 			NativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, out RECT rectWorkArea, 0);
 			Rect workArea = new Rect(rectWorkArea.Left / scaleX, rectWorkArea.Top / scaleY, (rectWorkArea.Right - rectWorkArea.Left) / scaleX, (rectWorkArea.Bottom - rectWorkArea.Top) / scaleY);
 

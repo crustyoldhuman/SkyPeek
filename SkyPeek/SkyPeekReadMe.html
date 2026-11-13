@@ -695,27 +695,34 @@
     </section>
 
         <section class="content-block" id="section-support">
-      <h2>16. Troubleshooting & Support</h2>
-      <ul>
-        <li><strong>Updates: </strong>If an update is released, you will receive a notification (if enabled in Windows) in your Windows notifications along with a download link, and a new option in SkyPeek's right click menu will appear for the update as well. This only applies to SkyPeek users that installed the program via the .exe setup file or the standalone portable versionof the program. The Windows App store has native automatic updates.</li>
-        <li><strong>Offline mode:</strong> if your system goes offline, an "Offline" tag will get added to your tray icon tooltip. Your last downloaded weather models will be displayed until connection is restored. Restoring connection will trigger an update if the time offline exceeds your weather refresh interval.</li>
-        <li><strong>API Unreachable:</strong> if the weather services go down or your connection gets rate limited and you're not getting refresh updates (are you using any other weather sites or programs that may share the same API?), an "API Unreachable" tag will be added to your tray icon tooltip. The last downloaded weather models will be displayed normally until connection to weather services has been restored. This will trigger an update if the disconnection time exceeds your refresh interval.</li>
-        <li>Stuttering navigation, or slow transitions? Try disabling window transparency and the animated weather icons in <strong>Settings &rarr; Appearance</strong>.</li>
-        <li>In the event that SkyPeek becomes unresponsive, disappears from the system tray, or any other strange behavior — right click the windows taskbar and click "Task Manager". Then, search for SkyPeek and right-click on it. Choose "End task". Reopen SkyPeek.</li>
-        <li><strong>Contact info:</strong> SkyPeek is a personal passion project and does not offer contact information for formal support. If you want to stalk the developer, you can find them playing games on Twitch or YouTube @crustyoldhuman</li>
-        <li>For a genuine issue with the app (like if you've discovered an error log by your settings file) breaking or failing to do it's weather duties properly, please submit an issue here on GitHub. NOTE: I will check here periodically but again, SkyPeek is not my fulltime job, but a passion project.</li>
-          <div style="text-align: center; margin-top: 10px;">
-            <p style="margin: 4px 0;">
-              <a href="https://github.com/crustyoldhuman/SkyPeek/issues" target="_blank" rel="noopener noreferrer">SkyPeek Issues Page</a>
-            </p>
-          </div>
-      </ul>
-    </section>
+            <h2>16. Troubleshooting & Support</h2>
+            <ul>
+                <li><strong>Updates: </strong>If an update is released, you will receive a notification (if enabled in Windows) in your Windows notifications along with a download link, and a new option in SkyPeek's right click menu will appear for the update as well. This only applies to SkyPeek users that installed the program via the .exe setup file or the standalone portable versionof the program. The Windows App store has native automatic updates.</li>
+                <li><strong>Offline mode:</strong> if your system goes offline, an "Offline" tag will get added to your tray icon tooltip. Your last downloaded weather models will be displayed until connection is restored. Restoring connection will trigger an update if the time offline exceeds your weather refresh interval.</li>
+                <li><strong>API Unreachable:</strong> if the weather services go down or your connection gets rate limited and you're not getting refresh updates (are you using any other weather sites or programs that may share the same API?), an "API Unreachable" tag will be added to your tray icon tooltip. The last downloaded weather models will be displayed normally until connection to weather services has been restored. This will trigger an update if the disconnection time exceeds your refresh interval.</li>
+                <li>Stuttering navigation, or slow transitions? Try disabling window transparency and the animated weather icons in <strong>Settings &rarr; Appearance</strong>.</li>
+                <li>In the event that SkyPeek becomes unresponsive, disappears from the system tray, or any other strange behavior — right click the windows taskbar and click "Task Manager". Then, search for SkyPeek and right-click on it. Choose "End task". Reopen SkyPeek.</li>
+                <li><strong>Contact info:</strong> SkyPeek is a personal passion project and does not offer contact information for formal support. If you want to stalk the developer, you can find them playing games on Twitch or YouTube @crustyoldhuman</li>
+                <li>
+                    For a genuine issue with the app (like if you've discovered an error log by your settings file) breaking or failing to do it's weather duties properly, please submit an issue here on GitHub. NOTE: I will check here periodically but again, SkyPeek is not my fulltime job, but a passion project.
+                    <div style="text-align: center; margin-top: 10px;">
+                        <p style="margin: 4px 0;">
+                            <a href="https://github.com/crustyoldhuman/SkyPeek/issues" target="_blank" rel="noopener noreferrer">SkyPeek Issues Page</a>
+                        </p>
+                    </div>
+                </li>
+            </ul>
+        </section>
 
         <section class="content-block" id="section-changelog">
       <h2>17. Version Changelog</h2>
       <ul>
         <li><strong>1.0.0</strong> - Initial release. We're feature complete, and ready to peek.</li>
+        <li><strong>1.0.1</strong> - Fixed a graphic issue when importing save files and cleaned up the Info window in Settings</li>
+        <li><strong>1.0.2</strong> - This version number got swallowed in a Windows Store update gone bad. Ignore it</li>
+        <li><strong>1.0.3</strong> - Fixed a rare but nasty bug that crashed the program sometimes when waking from sleep</li>
+        <li><strong>1.0.4</strong> - Overhauled data saving engine so it's more dependable and cleaned up some unneccesary data being held onto that wasn't needed</li>
+        <li><strong>1.0.5</strong> - Fixed a bug that caused the spawn location of the tray menu and weather flyout to drift when changing DPI</li>
       </ul>
     </section>
 

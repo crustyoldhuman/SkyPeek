@@ -1450,9 +1450,91 @@ namespace SkyPeek
 
 		public System.Windows.Point GetTrayIconScreenPosition()
 		{
+			try
+			{
+				bool rectFound = false;
+
+				var identifier = new NOTIFYICONIDENTIFIER
+				{
+					cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<NOTIFYICONIDENTIFIER>(),
+					hWnd = TrayIcon.TrayIcon.WindowHandle,
+					uID = 0,
+					guidItem = TrayIcon.Id
+				};
+
+				if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out RECT rect) == 0)
+				{
+					rectFound = true;
+				}
+				else
+				{
+					for (uint i = 0; i <= 10; i++)
+					{
+						identifier.uID = i;
+
+						identifier.guidItem = TrayIcon.Id;
+						if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out rect) == 0)
+						{
+							rectFound = true;
+							break;
+						}
+
+						identifier.guidItem = TrayIcon.TrayIcon.Id;
+						if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out rect) == 0)
+						{
+							rectFound = true;
+							break;
+						}
+
+						identifier.guidItem = Guid.Empty;
+						if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out rect) == 0)
+						{
+							rectFound = true;
+							break;
+						}
+					}
+				}
+
+				if (rectFound)
+				{
+					double scaleX = 1.0, scaleY = 1.0;
+					IntPtr oldContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+					try
+					{
+						POINT pt = new POINT { X = rect.Left, Y = rect.Top };
+						IntPtr hMonitor = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
+						if (NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpiX, out uint dpiY) == 0)
+						{
+							scaleX = dpiX / 96.0;
+							scaleY = dpiY / 96.0;
+						}
+						else
+						{
+							var dpi = VisualTreeHelper.GetDpi(this);
+							scaleX = dpi.DpiScaleX;
+							scaleY = dpi.DpiScaleY;
+						}
+					}
+					finally
+					{
+						if (oldContext != IntPtr.Zero)
+						{
+							NativeMethods.SetThreadDpiAwarenessContext(oldContext);
+						}
+					}
+
+					double x = (rect.Left + (rect.Right - rect.Left) / 2.0) / scaleX;
+					double y = (rect.Top + (rect.Bottom - rect.Top) / 2.0) / scaleY;
+					return new System.Windows.Point(x, y);
+				}
+			}
+			catch (System.Exception)
+			{
+			}
+
 			NativeMethods.GetCursorPosition(out POINT pos);
-			var dpi = VisualTreeHelper.GetDpi(this);
-			return new System.Windows.Point(pos.X / dpi.DpiScaleX, pos.Y / dpi.DpiScaleY);
+			var fallbackDpi = VisualTreeHelper.GetDpi(this);
+			return new System.Windows.Point(pos.X / fallbackDpi.DpiScaleX, pos.Y / fallbackDpi.DpiScaleY);
 		}
 
 		public void RefreshTrayIcon(bool debounced = false)

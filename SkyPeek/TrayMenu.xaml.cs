@@ -211,9 +211,21 @@ namespace SkyPeek
 
 			this.Opacity = 0;
 
-			var windowDpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
-			double scaleX = windowDpi.DpiScaleX;
-			double scaleY = windowDpi.DpiScaleY;
+			NativeMethods.GetCursorPosition(out POINT cursorPos);
+			IntPtr hMonitor = NativeMethods.MonitorFromPoint(cursorPos, NativeMethods.MONITOR_DEFAULTTONEAREST);
+			double scaleX = 1.0, scaleY = 1.0;
+
+			if (NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpiX, out uint dpiY) == 0)
+			{
+				scaleX = dpiX / 96.0;
+				scaleY = dpiY / 96.0;
+			}
+			else
+			{
+				var windowDpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+				scaleX = windowDpi.DpiScaleX;
+				scaleY = windowDpi.DpiScaleY;
+			}
 
 			double cursorX = 0, cursorY = 0;
 			if (Application.Current.MainWindow is MainWindow mw)
@@ -224,7 +236,6 @@ namespace SkyPeek
 			}
 			else
 			{
-				NativeMethods.GetCursorPosition(out POINT cursorPos);
 				cursorX = cursorPos.X / scaleX;
 				cursorY = cursorPos.Y / scaleY;
 			}
