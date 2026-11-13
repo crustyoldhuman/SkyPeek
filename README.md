@@ -8,7 +8,7 @@
 
 ## Introduction
 
-Thanks for checking out SkyPeek! I believe weather is basically a human right and as a species we deserve an easy way to get the weather (which our taxes pay for anyways) without being subjected to clickbait articles, stalkerish telemetry, subscription models, and all the other terrible things that plague modern software. So, I built SkyPeek--a fully featured, compact, efficient, and beautiful weather app that lives right in your PCs system tray by the clock. If you're looking for a one-stop shop for radar, per-city granular alerts, Windows theme integration, 10-day forecast, 24-hour forecast, Daily summary with air quality ratings, plenty of other bells & whistles, all with no registration, signs up, or API keys required anywhere--give SkyPeek a chance. 
+Thanks for checking out SkyPeek! I believe weather is basically a human right and as a species we deserve an easy way to get the weather (which our taxes pay for anyways) without being subjected to clickbait articles, stalkerish telemetry, subscription models, and all the other terrible things that plague modern software. So, I made SkyPeek--a fully featured, compact, efficient, and beautiful weather app that lives right in your PCs system tray by the clock. If you're looking for a one-stop shop for radar, per-city granular alerts, Windows theme integration, 10-day forecast, 24-hour forecast, Daily summary with air quality ratings, plenty of other bells & whistles, all with no registration, signs up, or API keys required anywhere--give SkyPeek a chance. 
 
 <p align="center"><img width="400" alt="AdTrackingFreePromo" src="https://github.com/user-attachments/assets/48858a94-a481-484e-aef6-75306d3d1d3c" /> <img width="400" alt="AdTrackingFreePromo" src="https://github.com/user-attachments/assets/a4a7b67e-6290-4b81-bf8c-0b7183a557c6" /></p>
 
@@ -32,9 +32,8 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 14\. [Third Party Services Info](#third-party-services-info)<br>
 15\. [Accessibility Information](#accessibility-information)<br>
 16\. [Updates & Support](#updates--support)<br>
-17\. [Version Changelog](#version-changelog)<br>
-18\. [User License](#user-license)<br>
-19\. [Shameless Plugs](#shameless-plugs)
+17\. [User License](#user-license)<br>
+18\. [Shameless Plugs](#shameless-plugs)
 
 </div>
     
@@ -218,16 +217,6 @@ SkyPeek connects to various free weather services to provide all of its features
 - **Contact info**: SkyPeek is a personal passion project and does not offer contact information for formal support. If you want to stalk the developer, you can find them playing games on Twitch or YouTube @crustyoldhuman
 - For a genuine issue with the app (like if you've discovered an error log by your settings file) breaking or failing to do it's weather duties properly, please submit an issue here on GitHub. NOTE: I will check here periodically but again, SkyPeek is not my fulltime job, but a passion project.
   - https://github.com/crustyoldhuman/SkyPeek/issues
-
-## Version Changelog
-
-- **1.0.0** - Initial release. We're feature complete, and ready to peek.
-
-## User License
-
-SkyPeek is distributed under the GNU General Public License (GPL). In short, this means you are free to use, modify, and distribute the software, provided that any modified versions or derivative works are also open-source and licensed under the identical GPL terms.
-
-For more information see here: https://www.gnu.org/licenses/gpl-3.0.en.html
 
 ## Shameless Plugs
 
