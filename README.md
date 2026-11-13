@@ -32,9 +32,8 @@ Thanks for checking out SkyPeek! I believe weather is basically a human right an
 14\. [Third Party Services Info](#third-party-services-info)<br>
 15\. [Accessibility Information](#accessibility-information)<br>
 16\. [Updates & Support](#updates--support)<br>
-17\. [Version Changelog](#version-changelog)<br>
-18\. [User License](#user-license)<br>
-19\. [Shameless Plugs](#shameless-plugs)
+17\. [User License](#user-license)<br>
+18\. [Shameless Plugs](#shameless-plugs)
 
 </div>
     
