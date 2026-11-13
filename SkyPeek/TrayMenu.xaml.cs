@@ -162,6 +162,13 @@ namespace SkyPeek
 
 			this.Unloaded += (s, e) =>
 				Microsoft.Win32.SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
+
+			this.DpiChanged += (s, e) =>
+			{
+				System.Diagnostics.Debug.WriteLine($"\n*** [TrayMenu.DpiChanged] EVENT FIRED ***");
+				System.Diagnostics.Debug.WriteLine($"*** Old DPI Scale: X={e.OldDpi.DpiScaleX}, Y={e.OldDpi.DpiScaleY}");
+				System.Diagnostics.Debug.WriteLine($"*** New DPI Scale: X={e.NewDpi.DpiScaleX}, Y={e.NewDpi.DpiScaleY}\n");
+			};
 		}
 
 		private void SystemEvents_UserPreferenceChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e)
@@ -204,6 +211,10 @@ namespace SkyPeek
 
 			this.Opacity = 0;
 
+			var windowDpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+			double scaleX = windowDpi.DpiScaleX;
+			double scaleY = windowDpi.DpiScaleY;
+
 			double cursorX = 0, cursorY = 0;
 			if (Application.Current.MainWindow is MainWindow mw)
 			{
@@ -213,13 +224,13 @@ namespace SkyPeek
 			}
 			else
 			{
-				NativeMethods.GetCursorPosition(out POINT cursorPoint);
-				var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
-				cursorX = cursorPoint.X / dpi.DpiScaleX;
-				cursorY = cursorPoint.Y / dpi.DpiScaleY;
+				NativeMethods.GetCursorPosition(out POINT cursorPos);
+				cursorX = cursorPos.X / scaleX;
+				cursorY = cursorPos.Y / scaleY;
 			}
 
-			var workArea = SystemParameters.WorkArea;
+			NativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, out RECT rectWorkArea, 0);
+			Rect workArea = new Rect(rectWorkArea.Left / scaleX, rectWorkArea.Top / scaleY, (rectWorkArea.Right - rectWorkArea.Left) / scaleX, (rectWorkArea.Bottom - rectWorkArea.Top) / scaleY);
 
 			// Explicitly subtract the shadow margin from the visual gap to match SecondaryViews math
 			double shadowMargin = 20;
@@ -237,6 +248,8 @@ namespace SkyPeek
 			double startY = 0;
 			double offset = 15;
 
+			double primaryWidth = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSCREEN) / scaleX;
+
 			if (workArea.Top > 0)
 			{
 				endY = workArea.Top - adjustedMargin;
@@ -247,7 +260,7 @@ namespace SkyPeek
 				endX = workArea.Left - adjustedMargin;
 				startX = -offset;
 			}
-			else if (workArea.Right < SystemParameters.PrimaryScreenWidth)
+			else if (workArea.Right < primaryWidth)
 			{
 				endX = workArea.Right - width + adjustedMargin;
 				startX = offset;

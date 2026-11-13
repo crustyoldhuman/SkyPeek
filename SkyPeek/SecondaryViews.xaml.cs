@@ -859,9 +859,12 @@ namespace SkyPeek
 		}
 		private static TaskbarPosition GetTaskbarPosition()
 		{
-			if (SystemParameters.WorkArea.Top > 0) return TaskbarPosition.Top;
-			if (SystemParameters.WorkArea.Left > 0) return TaskbarPosition.Left;
-			if (SystemParameters.WorkArea.Right < SystemParameters.PrimaryScreenWidth) return TaskbarPosition.Right;
+			NativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, out RECT rectWorkArea, 0);
+			int primaryWidth = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSCREEN);
+
+			if (rectWorkArea.Top > 0) return TaskbarPosition.Top;
+			if (rectWorkArea.Left > 0) return TaskbarPosition.Left;
+			if (rectWorkArea.Right < primaryWidth) return TaskbarPosition.Right;
 			return TaskbarPosition.Bottom;
 		}
 
@@ -947,8 +950,15 @@ namespace SkyPeek
 				System.Windows.Input.Keyboard.Focus(this);
 			}));
 
+			var windowDpi = VisualTreeHelper.GetDpi(this);
+			double scaleX = windowDpi.DpiScaleX;
+			double scaleY = windowDpi.DpiScaleY;
+
 			var taskbarPos = GetTaskbarPosition();
-			var workArea = SystemParameters.WorkArea;
+
+			NativeMethods.GetCursorPosition(out SkyPeek.POINT cursorPos);
+			NativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, out RECT rectWorkArea, 0);
+			Rect workArea = new Rect(rectWorkArea.Left / scaleX, rectWorkArea.Top / scaleY, (rectWorkArea.Right - rectWorkArea.Left) / scaleX, (rectWorkArea.Bottom - rectWorkArea.Top) / scaleY);
 
 			double cursorX = 0, cursorY = 0;
 			if (Application.Current.MainWindow is MainWindow mw)
@@ -959,10 +969,8 @@ namespace SkyPeek
 			}
 			else
 			{
-				GetCursorPosition(out POINT pos);
-				DpiScale dpi = VisualTreeHelper.GetDpi(this);
-				cursorX = pos.X / dpi.DpiScaleX;
-				cursorY = pos.Y / dpi.DpiScaleY;
+				cursorX = cursorPos.X / scaleX;
+				cursorY = cursorPos.Y / scaleY;
 			}
 
 			double endX = 0, endY = 0;
@@ -978,9 +986,11 @@ namespace SkyPeek
 			double actW = this.ActualWidth == 0 ? 305 : this.ActualWidth;
 			double actH = this.ActualHeight == 0 ? 440 : this.ActualHeight;
 
+			double primaryWidth = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXSCREEN) / scaleX;
+
 			if (_isCenteredMode)
 			{
-				endX = (SystemParameters.PrimaryScreenWidth / 2) - (actW / 2);
+				endX = (primaryWidth / 2) - (actW / 2);
 				if (popupPos == "Top") endY = workArea.Top - offset;
 				else endY = workArea.Bottom - actH + offset;
 			}
@@ -1005,13 +1015,18 @@ namespace SkyPeek
 				endY = cursorY - (actH / 2);
 			}
 
+			double vScreenLeft = NativeMethods.GetSystemMetrics(76) / scaleX;
+			double vScreenTop = NativeMethods.GetSystemMetrics(77) / scaleY;
+			double vScreenWidth = NativeMethods.GetSystemMetrics(78) / scaleX;
+			double vScreenHeight = NativeMethods.GetSystemMetrics(79) / scaleY;
+
 			// Clamp horizontal bounds
-			if (endX + actW > SystemParameters.VirtualScreenWidth + offset) endX = SystemParameters.VirtualScreenWidth - actW + offset;
-			if (endX < SystemParameters.VirtualScreenLeft - offset) endX = SystemParameters.VirtualScreenLeft - offset;
+			if (endX + actW > vScreenLeft + vScreenWidth + offset) endX = vScreenLeft + vScreenWidth - actW + offset;
+			if (endX < vScreenLeft - offset) endX = vScreenLeft - offset;
 
 			// Clamp vertical bounds
-			if (endY + actH > SystemParameters.VirtualScreenHeight + offset) endY = SystemParameters.VirtualScreenHeight - actH + offset;
-			if (endY < SystemParameters.VirtualScreenTop - offset) endY = SystemParameters.VirtualScreenTop - offset;
+			if (endY + actH > vScreenTop + vScreenHeight + offset) endY = vScreenTop + vScreenHeight - actH + offset;
+			if (endY < vScreenTop - offset) endY = vScreenTop - offset;
 
 			this.Left = endX;
 			this.Top = endY;

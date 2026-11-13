@@ -63,6 +63,28 @@ namespace SkyPeek
 			return p;
 		}
 
+		[LibraryImport("user32.dll", EntryPoint = "SystemParametersInfoW")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		internal static partial bool SystemParametersInfo(uint uiAction, uint uiParam, out RECT pvParam, uint fWinIni);
+		internal const uint SPI_GETWORKAREA = 0x0030;
+
+		[LibraryImport("user32.dll")]
+		internal static partial int GetSystemMetrics(int nIndex);
+		internal const int SM_CXSCREEN = 0;
+		internal const int SM_CYSCREEN = 1;
+
+		[LibraryImport("user32.dll")]
+		internal static partial IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+		internal const uint MONITOR_DEFAULTTONEAREST = 2;
+
+		[LibraryImport("shcore.dll")]
+		internal static partial int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+		internal const int MDT_EFFECTIVE_DPI = 0;
+
+		internal const uint SWP_NOSIZE = 0x0001;
+		internal const uint SWP_NOZORDER = 0x0004;
+		internal const uint SWP_NOACTIVATE = 0x0010;
+
 		[System.Diagnostics.CodeAnalysis.SuppressMessage("Interoperability", "SYSLIB1054:Use 'LibraryImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time", Justification = ".NET source generator fails to generate implementation")]
 		[DllImport("user32.dll")]
 		[return: MarshalAs(UnmanagedType.Bool)]

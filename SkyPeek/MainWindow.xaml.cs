@@ -1450,64 +1450,9 @@ namespace SkyPeek
 
 		public System.Windows.Point GetTrayIconScreenPosition()
 		{
-			try
-			{
-				bool rectFound = false;
-
-				var identifier = new NOTIFYICONIDENTIFIER
-				{
-					cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf<NOTIFYICONIDENTIFIER>(),
-					hWnd = TrayIcon.TrayIcon.WindowHandle,
-					uID = 0,
-					guidItem = TrayIcon.Id
-				};
-
-				if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out RECT rect) == 0)
-				{
-					rectFound = true;
-				}
-				else
-				{
-					for (uint i = 0; i <= 10; i++)
-					{
-						identifier.uID = i;
-
-						identifier.guidItem = TrayIcon.Id;
-						if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out rect) == 0)
-						{
-							rectFound = true;
-							break;
-						}
-
-						identifier.guidItem = TrayIcon.TrayIcon.Id;
-						if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out rect) == 0)
-						{
-							rectFound = true;
-							break;
-						}
-
-						identifier.guidItem = Guid.Empty;
-						if (NativeMethods.Shell_NotifyIconGetRect(ref identifier, out rect) == 0)
-						{
-							rectFound = true;
-							break;
-						}
-					}
-				}
-
-				if (rectFound)
-				{
-					var dpi = VisualTreeHelper.GetDpi(this);
-					double x = (rect.Left + (rect.Right - rect.Left) / 2.0) / dpi.DpiScaleX;
-					double y = (rect.Top + (rect.Bottom - rect.Top) / 2.0) / dpi.DpiScaleY;
-					return new System.Windows.Point(x, y);
-				}
-			}
-			catch { }
-
 			NativeMethods.GetCursorPosition(out POINT pos);
-			var fallbackDpi = VisualTreeHelper.GetDpi(this);
-			return new System.Windows.Point(pos.X / fallbackDpi.DpiScaleX, pos.Y / fallbackDpi.DpiScaleY);
+			var dpi = VisualTreeHelper.GetDpi(this);
+			return new System.Windows.Point(pos.X / dpi.DpiScaleX, pos.Y / dpi.DpiScaleY);
 		}
 
 		public void RefreshTrayIcon(bool debounced = false)
