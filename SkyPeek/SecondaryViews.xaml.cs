@@ -109,6 +109,13 @@ namespace SkyPeek
 			e.Handled = true;
 		}
 
+		private void DismissConnectionBlocked_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+		{
+			ViewModel.DismissConnectionBlockedWarning();
+			e.Handled = true;
+		}
+
+
 		[System.Runtime.InteropServices.LibraryImport("user32.dll", EntryPoint = "GetCursorPos")]
 		[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
 		private static partial bool GetCursorPosition(out POINT lpPoint);
@@ -251,7 +258,7 @@ namespace SkyPeek
 			}
 		}
 
-		public async void UpdateWeatherUI(CachedWeatherData data, string city, bool flipWindArrow, bool showLoading = false, bool isOffline = false, bool isApiUnreachable = false)
+		public async void UpdateWeatherUI(CachedWeatherData data, string city, bool flipWindArrow, bool showLoading = false, bool isOffline = false, bool isApiUnreachable = false, NetworkFailureType connectionFailureType = NetworkFailureType.None)
 		{
 			if (data == null) return;
 			PauseRadar();
@@ -261,7 +268,7 @@ namespace SkyPeek
 
 			async System.Threading.Tasks.Task ApplyDataAsync()
 			{
-				await ViewModel.ProcessWeatherDataAsync(data, city, flipWindArrow, isOffline, isApiUnreachable);
+				await ViewModel.ProcessWeatherDataAsync(data, city, flipWindArrow, isOffline, isApiUnreachable, connectionFailureType);
 
 				string displayLocation = city;
 				SavedLocation? selectedLoc = AppConfig.Current.SavedLocations.FirstOrDefault(l => l.City.Equals(city, StringComparison.OrdinalIgnoreCase));
@@ -969,7 +976,7 @@ namespace SkyPeek
 			var taskbarPos = GetTaskbarPosition();
 
 			NativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, out RECT rectWorkArea, 0);
-			Rect workArea = new Rect(rectWorkArea.Left / scaleX, rectWorkArea.Top / scaleY, (rectWorkArea.Right - rectWorkArea.Left) / scaleX, (rectWorkArea.Bottom - rectWorkArea.Top) / scaleY);
+			Rect workArea = new(rectWorkArea.Left / scaleX, rectWorkArea.Top / scaleY, (rectWorkArea.Right - rectWorkArea.Left) / scaleX, (rectWorkArea.Bottom - rectWorkArea.Top) / scaleY);
 
 			double cursorX = 0, cursorY = 0;
 			if (Application.Current.MainWindow is MainWindow mw)

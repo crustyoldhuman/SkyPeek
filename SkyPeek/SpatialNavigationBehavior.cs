@@ -102,6 +102,8 @@ namespace SkyPeek
 
 			if (e.Key != Key.Down) _lastTabDownPressTime = DateTime.MinValue;
 
+			if (ProcessToastNavigation(window, e)) return;
+
 			if (window.ViewModel.IsLoading) return;
 
 			if (ProcessLocationManagerNavigation(window, e)) return;
@@ -1013,6 +1015,133 @@ namespace SkyPeek
 					fe.BringIntoView();
 				}
 			}
+		}
+
+		private static void RestoreFocusAfterToastDismissal(SecondaryViews window)
+		{
+			if (window.ViewModel.IsLoading)
+			{
+				System.Windows.Input.FocusManager.SetFocusedElement(window, window);
+				Keyboard.ClearFocus();
+				window.Focus();
+				return;
+			}
+
+			if (window.ViewModel.OnboardingVisibility == Visibility.Visible && window.ViewModel.CurrentActiveView == "Current")
+			{
+				window.CurrentView.OnboardingUserGuideLink.Focus();
+				return;
+			}
+
+			if (window.ViewModel.CurrentActiveView == "Current") { window.TabCurrent.Tag = "Selected"; window.TabCurrent.Focus(); }
+			else if (window.ViewModel.CurrentActiveView == "Hourly") window.TabHourly.Focus();
+			else if (window.ViewModel.CurrentActiveView == "10-Day") window.Tab10Day.Focus();
+			else if (window.ViewModel.CurrentActiveView == "Radar") window.RadarBackBorder.Focus();
+			else if (window.ViewModel.CurrentActiveView == "Summary") window.SummaryBackBorder.Focus();
+			else if (window.ViewModel.CurrentActiveView == "Alerts") window.AlertBackBorder.Focus();
+			else if (window.ViewModel.CurrentActiveView == "LocationManager") window.LocationManagerBackBorder.Focus();
+			else window.Focus();
+		}
+
+		private static bool ProcessToastNavigation(SecondaryViews window, KeyEventArgs e)
+		{
+			bool isConnectionBlockedVisible = window.ViewModel.ConnectionBlockedVisibility == Visibility.Visible;
+			bool isOnboardingVisible = !isConnectionBlockedVisible &&
+									   !window.ViewModel.IsLoading &&
+									   window.ViewModel.CurrentActiveView == "Current" &&
+									   window.ViewModel.OnboardingVisibility == Visibility.Visible;
+
+			if (!isConnectionBlockedVisible && !isOnboardingVisible) return false;
+
+			if (e.Key is Key.LeftShift or Key.RightShift or Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.System)
+			{
+				return true;
+			}
+
+			e.Handled = true;
+			if (e.IsRepeat) return true;
+
+			window._isKeyboardNavRevealed = true;
+			window.ViewModel.IsWeatherAnimationSelected = false;
+			window.ViewModel.IsLocationMenuSelected = false;
+			window.ViewModel.IsAlertIconSelected = false;
+
+			if (window.CurrentView.LocationComboBox.IsDropDownOpen) window.CurrentView.LocationComboBox.IsDropDownOpen = false;
+			if (window.LocManCountryInput.IsDropDownOpen) window.LocManCountryInput.IsDropDownOpen = false;
+			if (window.LocManStateInput.IsDropDownOpen) window.LocManStateInput.IsDropDownOpen = false;
+			if (window.CitySuggestionsPopup.IsOpen) window.CitySuggestionsPopup.IsOpen = false;
+
+			if (isConnectionBlockedVisible)
+			{
+				if (e.Key == Key.Escape)
+				{
+					window.ViewModel.DismissConnectionBlockedWarning();
+					RestoreFocusAfterToastDismissal(window);
+					return true;
+				}
+
+				if (e.Key is Key.Enter or Key.Space)
+				{
+					if (Keyboard.FocusedElement == window.DismissConnectionBlockedButton)
+					{
+						window.ViewModel.DismissConnectionBlockedWarning();
+						RestoreFocusAfterToastDismissal(window);
+					}
+					else
+					{
+						window.DismissConnectionBlockedButton.Focus();
+					}
+					return true;
+				}
+
+				window.DismissConnectionBlockedButton.Focus();
+				return true;
+			}
+
+			if (e.Key == Key.Escape)
+			{
+				window.ViewModel.DismissOnboarding();
+				RestoreFocusAfterToastDismissal(window);
+				return true;
+			}
+
+			if (e.Key is Key.Enter or Key.Space)
+			{
+				if (Keyboard.FocusedElement == window.CurrentView.OnboardingUserGuideLink)
+				{
+					window.CurrentView.OnboardingUserGuideLink.DoClick();
+				}
+				else if (Keyboard.FocusedElement == window.CurrentView.DismissOnboardingButton)
+				{
+					window.ViewModel.DismissOnboarding();
+					RestoreFocusAfterToastDismissal(window);
+				}
+				else
+				{
+					window.CurrentView.OnboardingUserGuideLink.Focus();
+				}
+				return true;
+			}
+
+			if (e.Key is Key.Up or Key.Down or Key.Left or Key.Right or Key.Tab)
+			{
+				if (Keyboard.FocusedElement == window.CurrentView.OnboardingUserGuideLink)
+				{
+					window.CurrentView.DismissOnboardingButton.Focus();
+				}
+				else
+				{
+					window.CurrentView.OnboardingUserGuideLink.Focus();
+				}
+				return true;
+			}
+
+			if (Keyboard.FocusedElement != window.CurrentView.OnboardingUserGuideLink && Keyboard.FocusedElement != window.CurrentView.DismissOnboardingButton)
+			{
+				window.CurrentView.OnboardingUserGuideLink.Focus();
+			}
+
+			return true;
 		}
 
 		public static bool ProcessRadarNavigation(SecondaryViews window, KeyEventArgs e)

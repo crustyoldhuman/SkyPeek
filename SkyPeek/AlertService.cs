@@ -31,7 +31,8 @@ namespace SkyPeek
 	{
 		private static readonly HttpClient _httpClient = new(new System.Net.Http.SocketsHttpHandler
 		{
-			PooledConnectionLifetime = System.TimeSpan.FromMinutes(5)
+			PooledConnectionLifetime = System.TimeSpan.FromMinutes(5),
+			ConnectTimeout = System.TimeSpan.FromSeconds(10)
 		})
 		{
 			Timeout = System.TimeSpan.FromSeconds(15)
@@ -102,8 +103,9 @@ namespace SkyPeek
 
 				return (city, state, country);
 			}
-			catch
+			catch (Exception ex)
 			{
+				App.LogCrash(ex, "AlertService.GetReverseGeocodeAsync Failure");
 				return null;
 			}
 		}
@@ -197,6 +199,7 @@ namespace SkyPeek
 				catch (Exception ex)
 				{
 					System.Diagnostics.Debug.WriteLine($"Alert fetch error ({country}): {ex.Message}");
+					App.LogCrash(ex, $"AlertService.GetAlertsAsync Failure ({country})");
 					return [];
 				}
 			});
@@ -233,13 +236,12 @@ namespace SkyPeek
 				}
 			}
 
-			string[] matchTokens = rawTokens
+			string[] matchTokens = [.. rawTokens
 				.Where(s => !string.IsNullOrWhiteSpace(s))
 				.SelectMany(s => s.Split('/', StringSplitOptions.RemoveEmptyEntries))
 				.Select(s => s.Trim())
 				.Where(s => !string.IsNullOrWhiteSpace(s))
-				.Distinct()
-				.ToArray();
+				.Distinct()];
 
 			System.Diagnostics.Debug.WriteLine($"[UK ALERTS] Match Tokens -> {string.Join(", ", matchTokens.Select(t => $"'{t}'"))}");
 
@@ -285,9 +287,13 @@ namespace SkyPeek
 							cachedUkWarningsHtml = await htmlResponse.Content.ReadAsStringAsync();
 						}
 					}
-					catch { /* Silently fallback to standard RSS description on fetch failure */ }
+					catch (Exception ex)
+					{
+						System.Diagnostics.Debug.WriteLine($"[UK ALERTS] Exception caught: {ex}");
+						App.LogCrash(ex, "AlertService.GetUkAlertsAsync Failure");
+					}
 
-					string NormalizeMatchString(string input) => _multipleSpacesRegex.Replace((input ?? "").ToLowerInvariant().Replace("&", "and").Replace(",", "").Replace("-", " "), " ");
+					static string NormalizeMatchString(string input) => _multipleSpacesRegex.Replace((input ?? "").ToLowerInvariant().Replace("&", "and").Replace(",", "").Replace("-", " "), " ");
 
 					foreach (System.Xml.XmlNode item in items)
 					{
@@ -398,7 +404,10 @@ namespace SkyPeek
 									}
 								}
 							}
-							catch { /* Silently fallback to RSS description on failure */ }
+							catch (Exception ex)
+							{
+								App.LogCrash(ex, "AlertService.GetUkAlertsAsync HTML Parse Failure");
+							}
 						}
 
 						if (match.Success)
@@ -527,13 +536,12 @@ namespace SkyPeek
 				}
 			}
 
-			string[] matchTokens = rawTokens
+			string[] matchTokens = [.. rawTokens
 				.Where(s => !string.IsNullOrWhiteSpace(s))
 				.SelectMany(s => s.Split('/', StringSplitOptions.RemoveEmptyEntries))
 				.Select(s => s.Trim())
 				.Where(s => !string.IsNullOrWhiteSpace(s))
-				.Distinct()
-				.ToArray();
+				.Distinct()];
 
 			string bomUrl = $"https://www.bom.gov.au/fwo/{stateAbbrev}.xml";
 			using HttpRequestMessage request = new(HttpMethod.Get, bomUrl);
@@ -634,6 +642,7 @@ namespace SkyPeek
 						catch (Exception ex)
 						{
 							System.Diagnostics.Debug.WriteLine($"BOM live fetch failure: {ex.Message}");
+							App.LogCrash(ex, "AlertService.GetAustraliaAlertsAsync Live Fetch Failure");
 						}
 					}
 
@@ -1024,6 +1033,7 @@ namespace SkyPeek
 							catch (Exception ex)
 							{
 								System.Diagnostics.Debug.WriteLine($"MetService live fetch failure: {ex.Message}");
+								App.LogCrash(ex, "AlertService.GetNewZealandAlertsAsync Live Fetch Failure");
 							}
 						}
 
@@ -1044,6 +1054,7 @@ namespace SkyPeek
 			catch (Exception ex)
 			{
 				System.Diagnostics.Debug.WriteLine($"MetService Alert Error: {ex.Message}");
+				App.LogCrash(ex, "AlertService.GetNewZealandAlertsAsync Failure");
 			}
 
 			return alerts;

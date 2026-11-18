@@ -22,6 +22,14 @@ using System.Runtime.CompilerServices;
 
 namespace SkyPeek
 {
+	public enum NetworkFailureType
+	{
+		None,
+		Offline,
+		ApiUnreachable,
+		FirewallOrAntivirusBlocked
+	}
+
 	[System.Runtime.Versioning.SupportedOSPlatform("windows10.0.19041.0")]
 	public class SlideoutViewModel : INotifyPropertyChanged
 	{
@@ -66,12 +74,35 @@ namespace SkyPeek
 			set { _selectedLocationName = value; OnPropertyChanged(); OnPropertyChanged(nameof(FormattedSummary)); }
 		}
 
-		public async System.Threading.Tasks.Task ProcessWeatherDataAsync(CachedWeatherData data, string displayCity, bool flipWindArrow, bool isOffline, bool isApiUnreachable)
+		public async System.Threading.Tasks.Task ProcessWeatherDataAsync(CachedWeatherData data, string displayCity, bool flipWindArrow, bool isOffline, bool isApiUnreachable, NetworkFailureType connectionFailureType = NetworkFailureType.None)
 		{
 			if (data == null) return;
 			SelectedLocationName = displayCity;
 
-			ConnectionStatusPrefix = isOffline ? "(Offline)\n" : (isApiUnreachable ? "(API Unreachable)\n" : "");
+			if (connectionFailureType != NetworkFailureType.None)
+			{
+				ConnectionFailureType = connectionFailureType;
+			}
+			else if (isOffline)
+			{
+				ConnectionFailureType = NetworkFailureType.Offline;
+			}
+			else if (isApiUnreachable)
+			{
+				ConnectionFailureType = NetworkFailureType.ApiUnreachable;
+			}
+			else
+			{
+				ConnectionFailureType = NetworkFailureType.None;
+			}
+
+			ConnectionStatusPrefix = ConnectionFailureType switch
+			{
+				NetworkFailureType.Offline => "(Offline)\n",
+				NetworkFailureType.FirewallOrAntivirusBlocked => "(Connection Blocked)\n",
+				NetworkFailureType.ApiUnreachable => "(API Unreachable)\n",
+				_ => ""
+			};
 
 			SunriseOpacity = DateTime.TryParse(data.Sunrise, out DateTime parsedSunrise) && DateTime.Now.TimeOfDay > parsedSunrise.TimeOfDay ? 0.3 : 1.0;
 			SunsetOpacity = DateTime.TryParse(data.Sunset, out DateTime parsedSunset) && DateTime.Now.TimeOfDay > parsedSunset.TimeOfDay ? 0.3 : 1.0;
@@ -325,6 +356,7 @@ namespace SkyPeek
 				}
 
 				OnPropertyChanged(nameof(FormattedSummary));
+				OnPropertyChanged(nameof(OnboardingVisibility));
 			}
 		}
 
@@ -524,22 +556,61 @@ namespace SkyPeek
 					LoadingText = _loadingPhrases[_rand.Next(_loadingPhrases.Length)];
 				}
 				OnPropertyChanged();
+				OnPropertyChanged(nameof(OnboardingVisibility));
 			}
 		}
 		public AlertModel AlertState { get; } = new();
 
-		private System.Windows.Visibility _onboardingVisibility = AppConfig.Current.HasSeenOnboarding ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
-		public System.Windows.Visibility OnboardingVisibility
-		{
-			get => _onboardingVisibility;
-			set { _onboardingVisibility = value; OnPropertyChanged(); }
-		}
+		public System.Windows.Visibility OnboardingVisibility =>
+			!AppConfig.Current.HasSeenOnboarding &&
+			_currentWeather != null &&
+			!_isLoading &&
+			ConnectionBlockedVisibility != System.Windows.Visibility.Visible
+				? System.Windows.Visibility.Visible
+				: System.Windows.Visibility.Collapsed;
 
 		public void DismissOnboarding()
 		{
-			OnboardingVisibility = System.Windows.Visibility.Collapsed;
 			AppConfig.Current.HasSeenOnboarding = true;
 			SettingsManager.Save();
+			OnPropertyChanged(nameof(OnboardingVisibility));
+		}
+
+		private NetworkFailureType _connectionFailureType = NetworkFailureType.None;
+		public NetworkFailureType ConnectionFailureType
+		{
+			get => _connectionFailureType;
+			set
+			{
+				if (_connectionFailureType != value)
+				{
+					_connectionFailureType = value;
+					if (value != NetworkFailureType.FirewallOrAntivirusBlocked)
+					{
+						_hasDismissedConnectionBlockedWarning = false;
+					}
+					OnPropertyChanged();
+					OnPropertyChanged(nameof(IsConnectionBlocked));
+					OnPropertyChanged(nameof(ConnectionBlockedVisibility));
+					OnPropertyChanged(nameof(OnboardingVisibility));
+				}
+			}
+		}
+
+		private bool _hasDismissedConnectionBlockedWarning = false;
+
+		public bool IsConnectionBlocked => _connectionFailureType == NetworkFailureType.FirewallOrAntivirusBlocked;
+
+		public System.Windows.Visibility ConnectionBlockedVisibility =>
+			IsConnectionBlocked && !_hasDismissedConnectionBlockedWarning
+				? System.Windows.Visibility.Visible
+				: System.Windows.Visibility.Collapsed;
+
+		public void DismissConnectionBlockedWarning()
+		{
+			_hasDismissedConnectionBlockedWarning = true;
+			OnPropertyChanged(nameof(ConnectionBlockedVisibility));
+			OnPropertyChanged(nameof(OnboardingVisibility));
 		}
 
 		public event Action? WeatherArraysTruncated;

@@ -33,6 +33,7 @@ namespace SkyPeek
 		private static readonly System.Net.Http.HttpClient _pingClient = new() { Timeout = System.TimeSpan.FromSeconds(3) };
 		private bool _isBootLoading = true;
 		private bool _isOffline = false;
+		private NetworkFailureType _connectionFailureType = NetworkFailureType.None;
 		public static bool IsUpdateAvailable { get; internal set; } = false;
 		public static string LatestUpdateVersion { get; internal set; } = "";
 		public static bool HasSeenUpdateToast { get; set; } = false;
@@ -42,19 +43,29 @@ namespace SkyPeek
 
 		private DateTime _lastGlobalRefresh = DateTime.MinValue;
 
-		private static async System.Threading.Tasks.Task<bool> IsNetworkConnectedAsync()
+		private static bool HasActiveNetworkInterface()
 		{
 			try
 			{
 				if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable()) return false;
 
-				bool hasLocalInterface = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+				return System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
 					.Any(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up
 						   && n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback
 						   && n.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Tunnel
 						   && n.GetIPProperties().GatewayAddresses.Any(g => g.Address != null && !g.Address.Equals(System.Net.IPAddress.Any) && !g.Address.Equals(System.Net.IPAddress.IPv6Any)));
+			}
+			catch
+			{
+				return false;
+			}
+		}
 
-				if (!hasLocalInterface) return false;
+		private static async System.Threading.Tasks.Task<bool> IsNetworkConnectedAsync()
+		{
+			try
+			{
+				if (!HasActiveNetworkInterface()) return false;
 
 				using var res = await _pingClient.GetAsync("http://clients3.google.com/generate_204");
 				return res.IsSuccessStatusCode || res.StatusCode == System.Net.HttpStatusCode.NoContent;
@@ -63,6 +74,164 @@ namespace SkyPeek
 			{
 				return false;
 			}
+		}
+
+		private readonly record struct ExceptionNetworkProfile(
+			bool HasAccessDenied,
+			bool HasTlsFailure,
+			bool HasTimeoutOrCancel,
+			bool HasConnectionBlockedOrReset,
+			bool HasDnsOrNetworkUnreachable,
+			bool HasHttpStatusCode,
+			bool HasNullStatusHttpException);
+
+		private static ExceptionNetworkProfile InspectNetworkException(System.Exception? root)
+		{
+			if (root == null) return default;
+
+			bool hasAccessDenied = false;
+			bool hasTlsFailure = false;
+			bool hasTimeoutOrCancel = false;
+			bool hasConnectionBlockedOrReset = false;
+			bool hasDnsOrNetworkUnreachable = false;
+			bool hasHttpStatusCode = false;
+			bool hasNullStatusHttpException = false;
+
+			System.Collections.Generic.Queue<System.Exception> queue = new();
+			queue.Enqueue(root);
+
+			while (queue.Count > 0)
+			{
+				var current = queue.Dequeue();
+
+				if (current is System.AggregateException agg)
+				{
+					foreach (var inner in agg.InnerExceptions) queue.Enqueue(inner);
+				}
+				else if (current.InnerException != null)
+				{
+					queue.Enqueue(current.InnerException);
+				}
+
+				if (current is System.Net.Sockets.SocketException sockEx)
+				{
+					switch (sockEx.SocketErrorCode)
+					{
+						case System.Net.Sockets.SocketError.AccessDenied:
+							hasAccessDenied = true;
+							break;
+						case System.Net.Sockets.SocketError.TimedOut:
+							hasTimeoutOrCancel = true;
+							break;
+						case System.Net.Sockets.SocketError.ConnectionRefused:
+						case System.Net.Sockets.SocketError.ConnectionReset:
+						case System.Net.Sockets.SocketError.ConnectionAborted:
+							hasConnectionBlockedOrReset = true;
+							break;
+						case System.Net.Sockets.SocketError.HostNotFound:
+						case System.Net.Sockets.SocketError.TryAgain:
+						case System.Net.Sockets.SocketError.NoData:
+						case System.Net.Sockets.SocketError.NetworkUnreachable:
+						case System.Net.Sockets.SocketError.HostUnreachable:
+						case System.Net.Sockets.SocketError.NetworkDown:
+							hasDnsOrNetworkUnreachable = true;
+							break;
+					}
+				}
+				else if (current is System.Security.Authentication.AuthenticationException)
+				{
+					hasTlsFailure = true;
+				}
+				else if (current is System.TimeoutException || current is System.Threading.Tasks.TaskCanceledException || current is System.OperationCanceledException)
+				{
+					hasTimeoutOrCancel = true;
+				}
+				else if (current is System.Net.Http.HttpRequestException httpEx)
+				{
+					if (httpEx.StatusCode.HasValue)
+					{
+						hasHttpStatusCode = true;
+					}
+					else
+					{
+						hasNullStatusHttpException = true;
+					}
+
+					if (httpEx.HttpRequestError == System.Net.Http.HttpRequestError.NameResolutionError)
+					{
+						hasDnsOrNetworkUnreachable = true;
+					}
+				}
+			}
+
+			return new(
+				hasAccessDenied,
+				hasTlsFailure,
+				hasTimeoutOrCancel,
+				hasConnectionBlockedOrReset,
+				hasDnsOrNetworkUnreachable,
+				hasHttpStatusCode,
+				hasNullStatusHttpException);
+		}
+
+		private static NetworkFailureType ClassifyNetworkFailure(System.Exception? apiException, System.Exception? pingException, bool pingSucceeded, bool hasLocalInterface)
+		{
+			var apiInfo = InspectNetworkException(apiException);
+			var pingInfo = InspectNetworkException(pingException);
+
+			if (apiInfo.HasAccessDenied || pingInfo.HasAccessDenied)
+			{
+				return NetworkFailureType.FirewallOrAntivirusBlocked;
+			}
+
+			if (hasLocalInterface && apiInfo.HasTlsFailure)
+			{
+				return NetworkFailureType.FirewallOrAntivirusBlocked;
+			}
+
+			if (!hasLocalInterface)
+			{
+				return NetworkFailureType.Offline;
+			}
+
+			if (!pingSucceeded)
+			{
+				if (apiInfo.HasDnsOrNetworkUnreachable || pingInfo.HasDnsOrNetworkUnreachable)
+				{
+					return NetworkFailureType.Offline;
+				}
+
+				bool apiBlockedOrTimedOut = apiInfo.HasTimeoutOrCancel || apiInfo.HasConnectionBlockedOrReset || apiInfo.HasNullStatusHttpException;
+				bool pingBlockedOrTimedOut = pingInfo.HasTimeoutOrCancel || pingInfo.HasConnectionBlockedOrReset || pingInfo.HasNullStatusHttpException;
+
+				if (apiBlockedOrTimedOut && pingBlockedOrTimedOut)
+				{
+					return NetworkFailureType.FirewallOrAntivirusBlocked;
+				}
+
+				return NetworkFailureType.Offline;
+			}
+
+			if (apiInfo.HasHttpStatusCode)
+			{
+				return NetworkFailureType.ApiUnreachable;
+			}
+
+			if (apiInfo.HasConnectionBlockedOrReset || apiInfo.HasTimeoutOrCancel)
+			{
+				return NetworkFailureType.FirewallOrAntivirusBlocked;
+			}
+
+			return NetworkFailureType.ApiUnreachable;
+		}
+
+		private void ClearConnectionFailureState()
+		{
+			_isOffline = false;
+			_connectionFailureType = NetworkFailureType.None;
+			_recoveryTimer.Stop();
+			_apiRecoveryTimer.Stop();
+			_slideoutInstance?.ViewModel.ConnectionFailureType = NetworkFailureType.None;
 		}
 
 		public async System.Threading.Tasks.Task RefreshAllLocationsCacheAsync(bool forceRefresh = false, [System.Runtime.CompilerServices.CallerMemberName] string _2 = "")
@@ -179,7 +348,11 @@ namespace SkyPeek
 								}
 							}
 
-							if (isHome) ApplyWeatherToUI(data, key, false);
+							if (isHome)
+							{
+								Application.Current.Dispatcher.Invoke(ClearConnectionFailureState);
+								ApplyWeatherToUI(data, key, false);
+							}
 						}
 						else if (isHome)
 						{
@@ -209,9 +382,10 @@ namespace SkyPeek
 					}
 				});
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
-				_ = HandleFetchFailureAsync(AppConfig.Current.City, AppConfig.Current.State);
+				App.LogCrash(ex, "RefreshAllLocationsCacheAsync API Failure");
+				_ = HandleFetchFailureAsync(AppConfig.Current.City, AppConfig.Current.State, ex);
 			}
 			finally
 			{
@@ -219,21 +393,48 @@ namespace SkyPeek
 			}
 		}
 
-		private async System.Threading.Tasks.Task HandleFetchFailureAsync(string city, string state)
+		private async System.Threading.Tasks.Task HandleFetchFailureAsync(string city, string state, System.Exception? apiException = null)
 		{
-			bool isOffline = true;
-			try
+			bool hasLocalInterface = HasActiveNetworkInterface();
+			bool pingSucceeded = false;
+			System.Exception? pingException = null;
+
+			if (hasLocalInterface)
 			{
-				using var res = await _pingClient.GetAsync("http://clients3.google.com/generate_204");
-				isOffline = !res.IsSuccessStatusCode && res.StatusCode != System.Net.HttpStatusCode.NoContent;
+				try
+				{
+					using var res = await _pingClient.GetAsync("http://clients3.google.com/generate_204");
+					pingSucceeded = res.IsSuccessStatusCode || res.StatusCode == System.Net.HttpStatusCode.NoContent;
+				}
+				catch (System.Exception ex)
+				{
+					pingException = ex;
+					App.LogCrash(ex, "HandleFetchFailureAsync Connectivity Ping Failure");
+				}
 			}
-			catch { }
+
+			NetworkFailureType failureType = ClassifyNetworkFailure(apiException, pingException, pingSucceeded, hasLocalInterface);
+
+			if (failureType == NetworkFailureType.FirewallOrAntivirusBlocked)
+			{
+				App.LogDiagnostic("NetworkFailureClassification",
+					$"Flagged as FirewallOrAntivirusBlocked for {city}, {state} (HasLocalInterface={hasLocalInterface}, PingSucceeded={pingSucceeded}, ApiException={apiException?.GetType().Name ?? "None"}, PingException={pingException?.GetType().Name ?? "None"})");
+			}
 
 			Application.Current.Dispatcher.Invoke(() =>
 			{
 				_updateTimer.Stop();
-				_isOffline = isOffline;
-				if (city.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && state.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase))
+				_isOffline = failureType == NetworkFailureType.Offline;
+				_connectionFailureType = failureType;
+
+				bool isHome = city.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && state.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase);
+
+				if (_slideoutInstance != null && (isHome || failureType == NetworkFailureType.FirewallOrAntivirusBlocked))
+				{
+					_slideoutInstance.ViewModel.ConnectionFailureType = failureType;
+				}
+
+				if (isHome)
 				{
 					_isBootLoading = false;
 					SavedLocation? homeLoc;
@@ -242,7 +443,7 @@ namespace SkyPeek
 						homeLoc = AppConfig.Current.SavedLocations.Find(l => l.City.Equals(city, System.StringComparison.OrdinalIgnoreCase) && l.State.Equals(state, System.StringComparison.OrdinalIgnoreCase));
 					}
 
-					if (isOffline)
+					if (failureType == NetworkFailureType.Offline)
 					{
 						if (!_recoveryTimer.IsEnabled) _recoveryTimer.Start();
 
@@ -258,7 +459,14 @@ namespace SkyPeek
 					}
 					else
 					{
-						if (!_apiRecoveryTimer.IsEnabled) _apiRecoveryTimer.Start();
+						if (!pingSucceeded)
+						{
+							if (!_recoveryTimer.IsEnabled) _recoveryTimer.Start();
+						}
+						else
+						{
+							if (!_apiRecoveryTimer.IsEnabled) _apiRecoveryTimer.Start();
+						}
 
 						if (homeLoc != null && AppConfig.Current.WeatherCache.TryGetValue(homeLoc.DisplayName, out var data))
 						{
@@ -267,7 +475,10 @@ namespace SkyPeek
 						else
 						{
 							UpdateTrayIcon("ERR");
-							try { TrayIcon.ToolTipText = "Weather API unreachable"; } catch { }
+							string tooltip = failureType == NetworkFailureType.FirewallOrAntivirusBlocked
+								? "Weather services blocked or unreachable"
+								: "Weather API unreachable";
+							try { TrayIcon.ToolTipText = tooltip; } catch { }
 						}
 					}
 				}
@@ -286,7 +497,7 @@ namespace SkyPeek
 				_slideoutInstance.ViewModel.PrecipUnit = AppConfig.Current.UseCm ? "cm" : "in";
 				_slideoutInstance.ViewModel.PrecipUnitShort = AppConfig.Current.UseCm ? "cm" : "\"";
 				_slideoutInstance.ViewModel.UseAnimatedIcons = AppConfig.Current.UseAnimatedIcons;
-				_slideoutInstance.UpdateWeatherUI(data, displayCity, AppConfig.Current.FlipWindArrow, showLoading, _isOffline, _apiRecoveryTimer.IsEnabled);
+				_slideoutInstance.UpdateWeatherUI(data, displayCity, AppConfig.Current.FlipWindArrow, showLoading, _isOffline, _apiRecoveryTimer.IsEnabled, _connectionFailureType);
 				_slideoutInstance.RefreshSavedLocations();
 			}
 		}
@@ -722,6 +933,11 @@ namespace SkyPeek
 					Application.Current.Dispatcher.Invoke(() =>
 					{
 						_isOffline = false;
+						if (_connectionFailureType == NetworkFailureType.Offline)
+						{
+							_connectionFailureType = NetworkFailureType.None;
+							_slideoutInstance?.ViewModel.ConnectionFailureType = NetworkFailureType.None;
+						}
 						_recoveryTimer.Stop();
 						ResumeTimersAndSync(); // Recalculates the refresh delta immediately upon ISP restoration
 						RefreshTrayIcon(debounced: true);
@@ -745,7 +961,7 @@ namespace SkyPeek
 				{
 					Application.Current.Dispatcher.Invoke(() =>
 					{
-						_apiRecoveryTimer.Stop();
+						ClearConnectionFailureState();
 						ResumeTimersAndSync();
 						RefreshTrayIcon(debounced: true);
 					});
@@ -798,9 +1014,16 @@ namespace SkyPeek
 					}
 					else
 					{
+						if (_connectionFailureType == NetworkFailureType.FirewallOrAntivirusBlocked && HasActiveNetworkInterface())
+						{
+							return;
+						}
+
 						if (!_isOffline)
 						{
 							_isOffline = true;
+							_connectionFailureType = NetworkFailureType.Offline;
+							_slideoutInstance?.ViewModel.ConnectionFailureType = NetworkFailureType.Offline;
 							SavedLocation? homeLoc;
 							lock (AppConfig.Current.ConfigLock)
 							{
@@ -1243,8 +1466,9 @@ namespace SkyPeek
 			catch (System.Runtime.InteropServices.COMException)
 			{
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
+				App.LogCrash(ex, "SyncWindowsLocationAsync Failure");
 			}
 		}
 
@@ -1254,6 +1478,9 @@ namespace SkyPeek
 			{
 				Application.Current.Dispatcher.Invoke(() =>
 				{
+					_isOffline = true;
+					_connectionFailureType = NetworkFailureType.Offline;
+					_slideoutInstance?.ViewModel.ConnectionFailureType = NetworkFailureType.Offline;
 					if (city.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) && state.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase))
 					{
 						UpdateTrayIcon("Off");
@@ -1274,9 +1501,10 @@ namespace SkyPeek
 
 				return await FetchAndUpdateTemperature(coords.Value.Latitude.ToString(), coords.Value.Longitude.ToString(), city, state, country, isTemporary, isManualSwap);
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
-				_ = HandleFetchFailureAsync(city, state);
+				App.LogCrash(ex, "FetchWeatherByLocation API Failure");
+				_ = HandleFetchFailureAsync(city, state, ex);
 				return null;
 			}
 		}
@@ -1369,13 +1597,15 @@ namespace SkyPeek
 
 				Application.Current.Dispatcher.Invoke(() =>
 				{
+					ClearConnectionFailureState();
 					_updateTimer.Interval = System.TimeSpan.FromMinutes(AppConfig.Current.RefreshInterval > 0 ? AppConfig.Current.RefreshInterval : 15);
 				});
 				return data;
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
-				_ = HandleFetchFailureAsync(displayCity, state);
+				App.LogCrash(ex, "FetchAndUpdateTemperature API Failure");
+				_ = HandleFetchFailureAsync(displayCity, state, ex);
 				_slideoutInstance?.ShowLoadingState();
 				return null;
 			}
@@ -1501,7 +1731,7 @@ namespace SkyPeek
 					IntPtr oldContext = NativeMethods.SetThreadDpiAwarenessContext(NativeMethods.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 					try
 					{
-						POINT pt = new POINT { X = rect.Left, Y = rect.Top };
+						POINT pt = new() { X = rect.Left, Y = rect.Top };
 						IntPtr hMonitor = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
 						if (NativeMethods.GetDpiForMonitor(hMonitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpiX, out uint dpiY) == 0)
 						{
@@ -1528,8 +1758,9 @@ namespace SkyPeek
 					return new System.Windows.Point(x, y);
 				}
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
+				App.LogCrash(ex, "GetTrayIconScreenPosition Failure");
 			}
 
 			NativeMethods.GetCursorPosition(out POINT pos);
@@ -1575,7 +1806,11 @@ namespace SkyPeek
 				}
 				UpdateTrayIcon(trayTempText, trayColor);
 
-				string statusPrefix = _isOffline ? "(Offline)\n" : (_apiRecoveryTimer.IsEnabled ? "(API Unreachable)\n" : "");
+				string statusPrefix = _isOffline
+					? "(Offline)\n"
+					: (_connectionFailureType == NetworkFailureType.FirewallOrAntivirusBlocked
+						? "(Connection Blocked)\n"
+						: (_apiRecoveryTimer.IsEnabled ? "(API Unreachable)\n" : ""));
 				string alertPrefix = activeAlertCount > 0 ? $"Active alerts: {activeAlertCount}\n" : "";
 				string rawToolTip = $"{statusPrefix}{alertPrefix}{data.Status}\nHumidity: {data.Humidity}%\nWind: {data.WindSpeed} {data.WindSpeedUnit} {data.WindDir}";
 				try { TrayIcon.ToolTipText = rawToolTip.Length <= 127 ? rawToolTip : rawToolTip[..124] + "..."; } catch { }
@@ -1654,8 +1889,9 @@ namespace SkyPeek
 					}
 				}
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
+				App.LogCrash(ex, "CheckForUpdatesAsync API Failure");
 			}
 		}
 	}

@@ -264,15 +264,10 @@
 					}
 				}
 
-					e.Handled = true;
-				}
-				else if (e.Key == Key.T && Keyboard.Modifiers == ModifierKeys.Shift)
-				{
-					ViewModel.OnboardingVisibility = ViewModel.OnboardingVisibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-					e.Handled = true;
-				}
-				else if (e.Key == Key.Y && Keyboard.Modifiers == ModifierKeys.Shift)
-				{
+				e.Handled = true;
+			}
+			else if (e.Key == Key.Y && Keyboard.Modifiers == ModifierKeys.Shift)
+			{
 					ShowLoadingState();
 					_ = System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ =>
 					{

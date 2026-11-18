@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace SkyPeek
 {
+	[System.Runtime.Versioning.SupportedOSPlatform("windows10.0.19041.0")]
 	public partial class App : Application
 	{
 		public App()
@@ -104,6 +105,17 @@ namespace SkyPeek
 		private static bool _ownsMutex = false;
 
 		public static readonly System.Threading.Lock GlobalLogLock = new();
+		private const long MaxLogFileBytes = 1024 * 1024;
+		private static readonly TimeSpan DuplicateThrottleWindow = TimeSpan.FromMinutes(15);
+
+		private sealed class LogThrottleState
+		{
+			public DateTime LastWrittenUtc;
+			public DateTime LastWrittenLocal;
+			public int SuppressedCount;
+		}
+
+		private static readonly System.Collections.Generic.Dictionary<string, LogThrottleState> _throttleStates = [];
 
 		public static string ResolveCrashLogPath()
 		{
@@ -138,34 +150,154 @@ namespace SkyPeek
 			}
 		}
 
-		private static void LogCrash(Exception ex, string source)
+		private static void WriteLogEntry(string source, string body, string throttleKey)
+		{
+			DateTime nowUtc = DateTime.UtcNow;
+			DateTime nowLocal = DateTime.Now;
+
+			lock (GlobalLogLock)
+			{
+				string suppressionNote = string.Empty;
+
+				if (_throttleStates.TryGetValue(throttleKey, out LogThrottleState? state))
+				{
+					if ((nowUtc - state.LastWrittenUtc) < DuplicateThrottleWindow)
+					{
+						state.SuppressedCount++;
+						return;
+					}
+
+					if (state.SuppressedCount > 0)
+					{
+						suppressionNote = $"[Suppressed {state.SuppressedCount} identical occurrence(s) since {state.LastWrittenLocal:yyyy-MM-dd HH:mm:ss}]\n";
+						state.SuppressedCount = 0;
+					}
+
+					state.LastWrittenUtc = nowUtc;
+					state.LastWrittenLocal = nowLocal;
+				}
+				else
+				{
+					if (_throttleStates.Count >= 100)
+					{
+						DateTime cutoff = nowUtc - DuplicateThrottleWindow - DuplicateThrottleWindow;
+						System.Collections.Generic.List<string> staleKeys = [];
+						foreach (var kvp in _throttleStates)
+						{
+							if (kvp.Value.LastWrittenUtc < cutoff)
+							{
+								staleKeys.Add(kvp.Key);
+							}
+						}
+						foreach (string key in staleKeys)
+						{
+							_throttleStates.Remove(key);
+						}
+					}
+
+					_throttleStates[throttleKey] = new()
+					{
+						LastWrittenUtc = nowUtc,
+						LastWrittenLocal = nowLocal,
+						SuppressedCount = 0
+					};
+				}
+
+				string logPath = ResolveCrashLogPath();
+				string? directory = System.IO.Path.GetDirectoryName(logPath);
+				if (!string.IsNullOrEmpty(directory))
+				{
+					System.IO.Directory.CreateDirectory(directory);
+				}
+
+				if (System.IO.File.Exists(logPath))
+				{
+					try
+					{
+						System.IO.FileInfo fileInfo = new(logPath);
+						if (fileInfo.Length >= MaxLogFileBytes)
+						{
+							string backupPath = System.IO.Path.ChangeExtension(logPath, ".old.txt");
+							System.IO.File.Move(logPath, backupPath, overwrite: true);
+						}
+					}
+					catch { }
+				}
+
+				if (!System.IO.File.Exists(logPath))
+				{
+					System.IO.File.WriteAllText(logPath, "SkyPeek Crash Log\n\n");
+				}
+
+				string logEntry = $"[{nowLocal:yyyy-MM-dd HH:mm:ss}] [{source}]\n{suppressionNote}{body}{new string('-', 80)}\n";
+				System.IO.File.AppendAllText(logPath, logEntry);
+			}
+		}
+
+		internal static void LogCrash(Exception ex, string source)
 		{
 			try
 			{
-				string logPath = ResolveCrashLogPath();
-				string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{source}]\n{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}\n";
+				static void AppendExceptionDetails(System.Text.StringBuilder sb, Exception current, string header)
+				{
+					sb.AppendLine($"{header}{current.GetType().FullName}: {current.Message}");
+					if (current is System.Net.Sockets.SocketException sockEx)
+					{
+						sb.AppendLine($"SocketErrorCode: {sockEx.SocketErrorCode} ({(int)sockEx.SocketErrorCode}), NativeErrorCode: {sockEx.NativeErrorCode}");
+					}
+					else if (current is System.Net.Http.HttpRequestException httpEx)
+					{
+						string statusText = httpEx.StatusCode.HasValue
+							? $"{(int)httpEx.StatusCode.Value} ({httpEx.StatusCode.Value})"
+							: "null";
+						sb.AppendLine($"HttpRequestError: {httpEx.HttpRequestError}, StatusCode: {statusText}");
+					}
+					if (!string.IsNullOrEmpty(current.StackTrace))
+					{
+						sb.AppendLine(current.StackTrace);
+					}
+				}
+
+				Exception rootCause = ex;
+				while (rootCause.InnerException != null)
+				{
+					rootCause = rootCause.InnerException;
+				}
+
+				string rootCode = rootCause is System.Net.Sockets.SocketException rootSock
+					? ((int)rootSock.SocketErrorCode).ToString()
+					: (rootCause is System.Net.Http.HttpRequestException rootHttp ? $"{rootHttp.HttpRequestError}:{rootHttp.StatusCode}" : string.Empty);
+
+				string throttleKey = $"CRASH|{source}|{ex.GetType().FullName}|{ex.Message}|{rootCause.GetType().FullName}|{rootCode}";
+
+				System.Text.StringBuilder sb = new();
+				AppendExceptionDetails(sb, ex, string.Empty);
 
 				Exception? inner = ex.InnerException;
 				while (inner != null)
 				{
-					logEntry += $"Inner Exception: {inner.Message}\n{inner.StackTrace}\n";
+					AppendExceptionDetails(sb, inner, "Inner Exception: ");
 					inner = inner.InnerException;
 				}
 
-				logEntry += new string('-', 80) + "\n";
-
-				lock (GlobalLogLock)
-				{
-					if (!System.IO.File.Exists(logPath))
-					{
-						System.IO.File.WriteAllText(logPath, "SkyPeek Crash Log\n\n");
-					}
-					System.IO.File.AppendAllText(logPath, logEntry);
-				}
+				WriteLogEntry(source, sb.ToString(), throttleKey);
 			}
 			catch (Exception loggingEx)
 			{
 				System.Diagnostics.Debug.WriteLine($"Failed to write crash log: {loggingEx.Message}");
+			}
+		}
+
+		internal static void LogDiagnostic(string source, string message)
+		{
+			try
+			{
+				string throttleKey = $"DIAG|{source}|{message}";
+				WriteLogEntry(source, $"{message}\n", throttleKey);
+			}
+			catch (Exception loggingEx)
+			{
+				System.Diagnostics.Debug.WriteLine($"Failed to write diagnostic log: {loggingEx.Message}");
 			}
 		}
 	}

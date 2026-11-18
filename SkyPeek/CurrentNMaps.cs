@@ -33,15 +33,16 @@ namespace SkyPeek
 	{
 		private static readonly HttpClient _httpClient = new(new System.Net.Http.SocketsHttpHandler
 		{
-			PooledConnectionLifetime = System.TimeSpan.FromMinutes(5)
+			PooledConnectionLifetime = System.TimeSpan.FromMinutes(5),
+			ConnectTimeout = System.TimeSpan.FromSeconds(10)
 		})
 		{
-			Timeout = System.Threading.Timeout.InfiniteTimeSpan
+			Timeout = System.TimeSpan.FromSeconds(15)
 		};
 
 		private static async Task<HttpResponseMessage> GetWithRetryAsync(string url, int maxRetries = 3)
 		{
-			for (int i = 0; i < maxRetries; i++)
+			for (int i = 0; ; i++)
 			{
 				try
 				{
@@ -52,22 +53,18 @@ namespace SkyPeek
 					var response = await _httpClient.SendAsync(request);
 					if (!response.IsSuccessStatusCode)
 					{
+						var statusCode = response.StatusCode;
 						response.Dispose();
-						throw new HttpRequestException($"HTTP status code: {response.StatusCode}");
+						throw new HttpRequestException($"HTTP status code: {(int)statusCode} ({statusCode})", null, statusCode);
 					}
 					return response;
 				}
-				catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.Net.Sockets.SocketException)
+				catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is TimeoutException || ex is System.Net.Sockets.SocketException)
 				{
-					if (i == maxRetries - 1) continue;
+					if (i >= maxRetries - 1) throw;
 					await Task.Delay(2000 * (i + 1));
 				}
 			}
-
-			using HttpRequestMessage finalRequest = new(HttpMethod.Get, url);
-			finalRequest.Headers.TryAddWithoutValidation("User-Agent", "SkyPeekApp/1.0 (contact@skypeek.app)");
-			finalRequest.Headers.ConnectionClose = true;
-			return await _httpClient.SendAsync(finalRequest);
 		}
 
 		private static string SaintPattern => @"\b(st\.?)(?=\s|$)";
@@ -125,8 +122,9 @@ namespace SkyPeek
 				}
 				return searchResults;
 			}
-			catch
+			catch (Exception ex)
 			{
+				App.LogCrash(ex, "WeatherService.SearchLocationsAsync Failure");
 				return [];
 			}
 		}
@@ -222,8 +220,9 @@ namespace SkyPeek
 
 				return (locCity, locState, locCountry);
 			}
-			catch
+			catch (Exception ex)
 			{
+				App.LogCrash(ex, "WeatherService.GetIpLocationAsync Failure");
 				return null;
 			}
 		}
@@ -265,8 +264,9 @@ namespace SkyPeek
 
 				return (city, state, country);
 			}
-			catch (System.Exception)
+			catch (System.Exception ex)
 			{
+				App.LogCrash(ex, "WeatherService.GetReverseGeocodeAsync Failure");
 				return null;
 			}
 		}
@@ -280,8 +280,9 @@ namespace SkyPeek
 				using HttpResponseMessage response = await _httpClient.SendAsync(request);
 				return response.IsSuccessStatusCode;
 			}
-			catch
+			catch (Exception ex)
 			{
+				App.LogCrash(ex, "WeatherService.PingApiAsync Failure");
 				return false;
 			}
 		}
@@ -374,7 +375,10 @@ namespace SkyPeek
 					aqiDoc = JsonDocument.Parse(aqiJsonResponse);
 				}
 			}
-			catch { /* Ignore AQI failures to preserve core weather fetch */ }
+				catch (Exception ex)
+				{
+					App.LogCrash(ex, "WeatherService.GetWeatherBulkAsync AQI Failure");
+				}
 
 				List<CachedWeatherData> results = [];
 

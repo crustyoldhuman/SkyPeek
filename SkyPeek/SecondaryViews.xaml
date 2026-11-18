@@ -102,6 +102,64 @@
 				</StackPanel>
 			</Grid>
 
+			<Border x:Name="ConnectionBlockedToast" Grid.Row="0" VerticalAlignment="Center" Padding="12" Background="{DynamicResource ToastBackgroundBrush}" BorderBrush="{DynamicResource PrimaryTextBrush}" BorderThickness="1" CornerRadius="8" Panel.ZIndex="150" Effect="{DynamicResource BaseTextShadowEffect}">
+				<Border.Style>
+					<Style TargetType="Border">
+						<Setter Property="IsHitTestVisible" Value="False"/>
+						<Setter Property="Opacity" Value="0"/>
+						<Style.Triggers>
+							<DataTrigger Binding="{Binding ConnectionBlockedVisibility}" Value="Visible">
+								<Setter Property="IsHitTestVisible" Value="True"/>
+								<DataTrigger.EnterActions>
+									<BeginStoryboard>
+										<Storyboard>
+											<DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.4"/>
+											<ThicknessAnimation Storyboard.TargetProperty="Margin" From="15,30,15,-30" To="15,0,15,0" Duration="0:0:0.4">
+												<ThicknessAnimation.EasingFunction>
+													<QuadraticEase EasingMode="EaseOut"/>
+												</ThicknessAnimation.EasingFunction>
+											</ThicknessAnimation>
+										</Storyboard>
+									</BeginStoryboard>
+								</DataTrigger.EnterActions>
+								<DataTrigger.ExitActions>
+									<BeginStoryboard>
+										<Storyboard>
+											<DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.4"/>
+											<ThicknessAnimation Storyboard.TargetProperty="Margin" From="15,0,15,0" To="15,30,15,-30" Duration="0:0:0.4">
+												<ThicknessAnimation.EasingFunction>
+													<QuadraticEase EasingMode="EaseIn"/>
+												</ThicknessAnimation.EasingFunction>
+											</ThicknessAnimation>
+										</Storyboard>
+									</BeginStoryboard>
+								</DataTrigger.ExitActions>
+							</DataTrigger>
+						</Style.Triggers>
+					</Style>
+				</Border.Style>
+				<Grid>
+					<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12,0,12,0">
+						<TextBlock Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" FontSize="13" TextAlignment="Center">
+							<Run Text="Error:" Foreground="#DC3545" FontWeight="Bold"/><Run Text=" Weather services unreachable. Is SkyPeek being blocked by an antivirus or firewall program?"/>
+						</TextBlock>
+					</StackPanel>
+					<Border x:Name="DismissConnectionBlockedButton" Cursor="Hand" Background="Transparent" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,-8,-8,0" Padding="4" Focusable="True" FocusVisualStyle="{x:Null}" CornerRadius="4" BorderThickness="1.5" MouseLeftButtonUp="DismissConnectionBlocked_MouseLeftButtonUp" AutomationProperties.Name="Dismiss Connection Error">
+						<Border.Style>
+							<Style TargetType="Border">
+								<Setter Property="BorderBrush" Value="Transparent"/>
+								<Style.Triggers>
+									<Trigger Property="IsKeyboardFocused" Value="True">
+										<Setter Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}"/>
+									</Trigger>
+								</Style.Triggers>
+							</Style>
+						</Border.Style>
+						<Path Data="M 0,0 L 8,8 M 8,0 L 0,8" Stroke="IndianRed" StrokeThickness="1.5" Width="8" Height="8" Stretch="Uniform" />
+					</Border>
+				</Grid>
+			</Border>
+
 			<StackPanel x:Name="TabArea" Grid.Row="1" Orientation="Vertical" Background="Transparent" PreviewMouseWheel="TabArea_PreviewMouseWheel">
 				<Rectangle Height="1" Width="230" Margin="0,4,0,6" Fill="{DynamicResource PrimaryTextBrush}">
 					<Rectangle.OpacityMask>

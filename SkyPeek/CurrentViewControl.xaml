@@ -574,10 +574,20 @@
 				<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="12,0,12,0">
 					<TextBlock Text="Welcome to SkyPeek!" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center" Margin="0,-4,0,2"/>
 					<TextBlock Foreground="{DynamicResource PrimaryTextBrush}" TextWrapping="Wrap" FontSize="13" TextAlignment="Center">
-                        Check the <Hyperlink NavigateUri="help" RequestNavigate="OnboardingHyperlink_RequestNavigate" Foreground="{DynamicResource LinkTextBrush}" TextDecorations="None">User Guide</Hyperlink> for detailed instructions. If you need it later, click "Help &amp; info" in the Settings window. Happy Peeking!
+                        Check the <Hyperlink x:Name="OnboardingUserGuideLink" x:FieldModifier="public" NavigateUri="help" RequestNavigate="OnboardingHyperlink_RequestNavigate" Foreground="{DynamicResource LinkTextBrush}" FocusVisualStyle="{x:Null}"><Hyperlink.Style><Style TargetType="Hyperlink"><Setter Property="TextDecorations" Value="None"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="TextDecorations" Value="Underline"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="TextDecorations" Value="Underline"/><Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/></Trigger></Style.Triggers></Style></Hyperlink.Style>User Guide</Hyperlink> for detailed instructions. If you need it later, click "Help &amp; info" in the Settings window. Happy Peeking!
 					</TextBlock>
 				</StackPanel>
-				<Border Cursor="Hand" Background="Transparent" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,-8,-8,0" Padding="4" MouseLeftButtonUp="DismissOnboarding_MouseLeftButtonUp">
+				<Border x:Name="DismissOnboardingButton" x:FieldModifier="public" Cursor="Hand" Background="Transparent" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,-8,-8,0" Padding="4" Focusable="True" FocusVisualStyle="{x:Null}" CornerRadius="4" BorderThickness="1.5" MouseLeftButtonUp="DismissOnboarding_MouseLeftButtonUp" AutomationProperties.Name="Dismiss Welcome Message">
+					<Border.Style>
+						<Style TargetType="Border">
+							<Setter Property="BorderBrush" Value="Transparent"/>
+							<Style.Triggers>
+								<Trigger Property="IsKeyboardFocused" Value="True">
+									<Setter Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}"/>
+								</Trigger>
+							</Style.Triggers>
+						</Style>
+					</Border.Style>
 					<Path Data="M 0,0 L 8,8 M 8,0 L 0,8" Stroke="IndianRed" StrokeThickness="1.5" Width="8" Height="8" Stretch="Uniform" />
 				</Border>
 			</Grid>
