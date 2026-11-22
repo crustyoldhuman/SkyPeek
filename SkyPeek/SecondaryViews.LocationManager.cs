@@ -43,11 +43,17 @@ namespace SkyPeek
 			if (Application.Current.MainWindow is MainWindow)
 			{
 				_isProgrammaticLocationChange = true;
-				var savedLocationsSnapshot = AppConfig.Current.SavedLocations.ToArray();
+				SavedLocation[] savedLocationsSnapshot;
+				lock (AppConfig.Current.ConfigLock)
+				{
+					savedLocationsSnapshot = [.. AppConfig.Current.SavedLocations];
+				}
 
 				foreach (var loc in savedLocationsSnapshot)
 				{
-					bool isNowHome = loc.City == AppConfig.Current.City && loc.State == AppConfig.Current.State && loc.Country == AppConfig.Current.Country;
+					bool isNowHome = string.Equals(loc.City, AppConfig.Current.City, StringComparison.OrdinalIgnoreCase)
+						&& string.Equals(loc.State, AppConfig.Current.State, StringComparison.OrdinalIgnoreCase)
+						&& string.Equals(loc.Country, AppConfig.Current.Country, StringComparison.OrdinalIgnoreCase);
 					if (loc.IsHome != isNowHome)
 					{
 						loc.IsHome = isNowHome;
@@ -68,7 +74,9 @@ namespace SkyPeek
 					comboList.Add(new ComboMenuAction { DisplayName = "Clear all alerts" });
 				}
 
-				string currentSelection = ViewModel?.SelectedLocationName ?? CurrentView.LocationComboBox.Tag as string ?? "";
+				string currentSelection = !string.IsNullOrWhiteSpace(ViewModel?.SelectedLocationName)
+					? ViewModel.SelectedLocationName
+					: CurrentView.LocationComboBox.Tag as string ?? "";
 
 				_isProgrammaticLocationChange = true;
 				CurrentView.LocationComboBox.ItemsSource = comboList;
@@ -80,13 +88,25 @@ namespace SkyPeek
 					return false;
 				});
 
+				if (selected == null)
+				{
+					var fallbackHome = savedLocationsSnapshot.FirstOrDefault(l => l.IsHome) ?? savedLocationsSnapshot.FirstOrDefault();
+					if (fallbackHome != null)
+					{
+						selected = fallbackHome;
+						currentSelection = fallbackHome.DisplayName;
+					}
+				}
+
 				if (selected != null)
 				{
+					string targetSelection = currentSelection;
+					object targetItem = selected;
 					Dispatcher.BeginInvoke(new Action(() =>
 					{
-						if (ViewModel is SlideoutViewModel vm) vm.SelectedLocationName = currentSelection;
-						CurrentView.LocationComboBox.SelectedItem = selected;
-						CurrentView.LocationComboBox.Tag = currentSelection;
+						if (ViewModel is SlideoutViewModel vm) vm.SelectedLocationName = targetSelection;
+						CurrentView.LocationComboBox.SelectedItem = targetItem;
+						CurrentView.LocationComboBox.Tag = targetSelection;
 					}), DispatcherPriority.DataBind);
 				}
 
@@ -737,7 +757,9 @@ namespace SkyPeek
 				else
 				{
 					string currentTag = CurrentView.LocationComboBox.Tag as string ?? "";
-					CurrentView.LocationComboBox.SelectedItem = _localSavedLocations.FirstOrDefault(l => l.DisplayName == currentTag);
+					CurrentView.LocationComboBox.SelectedItem = _localSavedLocations.FirstOrDefault(l => l.DisplayName == currentTag)
+						?? _localSavedLocations.FirstOrDefault(l => l.IsHome)
+						?? _localSavedLocations.FirstOrDefault();
 				}
 				_isProgrammaticLocationChange = false;
 

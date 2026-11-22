@@ -216,7 +216,11 @@ namespace SkyPeek
 				if (locCountry == "United States of America" || locCountry == "United States") locCountry = "USA";
 				else if (locCountry == "United Kingdom") locCountry = "UK";
 
-				if (string.IsNullOrWhiteSpace(locCity) && string.IsNullOrWhiteSpace(locState)) return null;
+				if (string.IsNullOrWhiteSpace(locCity))
+				{
+					App.LogDiagnostic("WeatherService.GetIpLocationAsync", $"IP geolocation returned empty city (State='{locState}', Country='{locCountry}').");
+					return null;
+				}
 
 				return (locCity, locState, locCountry);
 			}
@@ -246,6 +250,10 @@ namespace SkyPeek
 				string city = address.TryGetProperty("city", out var cProp) ? cProp.GetString() ?? "" : "";
 				if (string.IsNullOrWhiteSpace(city)) city = address.TryGetProperty("town", out var tProp) ? tProp.GetString() ?? "" : "";
 				if (string.IsNullOrWhiteSpace(city)) city = address.TryGetProperty("village", out var vProp) ? vProp.GetString() ?? "" : "";
+				if (string.IsNullOrWhiteSpace(city)) city = address.TryGetProperty("municipality", out var mProp) ? mProp.GetString() ?? "" : "";
+				if (string.IsNullOrWhiteSpace(city)) city = address.TryGetProperty("hamlet", out var hProp) ? hProp.GetString() ?? "" : "";
+				if (string.IsNullOrWhiteSpace(city)) city = address.TryGetProperty("suburb", out var subProp) ? subProp.GetString() ?? "" : "";
+				if (string.IsNullOrWhiteSpace(city)) city = address.TryGetProperty("city_district", out var cdProp) ? cdProp.GetString() ?? "" : "";
 
 				string state = address.TryGetProperty("state", out var sProp) ? sProp.GetString() ?? "" : "";
 
@@ -260,7 +268,11 @@ namespace SkyPeek
 					_ => address.TryGetProperty("country", out var cnProp) ? cnProp.GetString() ?? "" : ""
 				};
 
-				if (string.IsNullOrWhiteSpace(city) && string.IsNullOrWhiteSpace(state)) return null;
+				if (string.IsNullOrWhiteSpace(city))
+				{
+					App.LogDiagnostic("WeatherService.GetReverseGeocodeAsync", $"Reverse geocode returned empty city for ({lat}, {lon}) (State='{state}', Country='{country}').");
+					return null;
+				}
 
 				return (city, state, country);
 			}
@@ -288,62 +300,129 @@ namespace SkyPeek
 		}
 
 		private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (double Latitude, double Longitude)> _coordCache = new();
+		private static readonly string[] _geoAdminPrefixes = ["City of ", "Town of ", "Village of ", "Borough of "];
+		private static readonly string[] _geoAdminSuffixes = [" Charter Township", " Township", " Municipality", " Borough", " County"];
+
+		private static string CleanCityForGeocoding(string city)
+		{
+			string cleaned = NormalizeLocationName(city);
+			foreach (string prefix in _geoAdminPrefixes)
+			{
+				if (cleaned.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+				{
+					cleaned = cleaned[prefix.Length..].Trim();
+				}
+			}
+			foreach (string suffix in _geoAdminSuffixes)
+			{
+				if (cleaned.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+				{
+					cleaned = cleaned[..^suffix.Length].Trim();
+				}
+			}
+			return cleaned;
+		}
 
 		public static async Task<(double Latitude, double Longitude)?> GetCoordinatesAsync(string city, string state, string country)
 		{
+			if (string.IsNullOrWhiteSpace(city))
+			{
+				App.LogDiagnostic("WeatherService.GetCoordinatesAsync", $"Skipped geocoding because city is empty (State='{state}', Country='{country}').");
+				return null;
+			}
+
 			string cacheKey = $"{city}|{state}|{country}".ToLowerInvariant();
 			if (_coordCache.TryGetValue(cacheKey, out var cached)) return cached;
 
-			string geoUrl = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(city.Trim())}&count=100&language=en&format=json";
-			using HttpResponseMessage geoResponse = await GetWithRetryAsync(geoUrl);
-
-			string geoJson = await geoResponse.Content.ReadAsStringAsync();
-			using JsonDocument geoDoc = JsonDocument.Parse(geoJson);
-
-			if (!geoDoc.RootElement.TryGetProperty("results", out JsonElement results) || results.GetArrayLength() == 0) return null;
-
-			string cUpper = country.ToUpperInvariant();
-			string expectedCountryCode = cUpper switch
+			static async Task<(JsonDocument Doc, string RawJson)> FetchGeoDocAsync(string queryName)
 			{
-				"USA" or "UNITED STATES" or "US" => "US",
-				"CANADA" or "CA" => "CA",
-				"UK" or "UNITED KINGDOM" or "GB" => "GB",
-				"AUSTRALIA" or "AU" => "AU",
-				"NEW ZEALAND" or "NZ" => "NZ",
-				_ => ""
-			};
-
-			foreach (JsonElement element in results.EnumerateArray())
-			{
-				bool stateMatches = true;
-				bool countryMatches = true;
-
-				if (!string.IsNullOrWhiteSpace(state))
-				{
-					if (element.TryGetProperty("admin1", out JsonElement admin1Obj) && admin1Obj.ValueKind == JsonValueKind.String)
-					{
-						string? admin1 = admin1Obj.GetString();
-						stateMatches = admin1?.Equals(state, StringComparison.OrdinalIgnoreCase) == true;
-					}
-					else stateMatches = false;
-				}
-
-				if (!string.IsNullOrWhiteSpace(expectedCountryCode) && element.TryGetProperty("country_code", out JsonElement countryObj))
-				{
-					string? countryCode = countryObj.GetString();
-					countryMatches = countryCode?.Equals(expectedCountryCode, StringComparison.OrdinalIgnoreCase) == true;
-				}
-
-				if (stateMatches && countryMatches)
-				{
-					var res = (GetSafeDouble(element.GetProperty("latitude")), GetSafeDouble(element.GetProperty("longitude")));
-					_coordCache[cacheKey] = res;
-					return res;
-				}
+				string geoUrl = $"https://geocoding-api.open-meteo.com/v1/search?name={Uri.EscapeDataString(queryName)}&count=100&language=en&format=json";
+				using HttpResponseMessage geoResponse = await GetWithRetryAsync(geoUrl);
+				string geoJson = await geoResponse.Content.ReadAsStringAsync();
+				return (JsonDocument.Parse(geoJson), geoJson);
 			}
-			var fallbackRes = (GetSafeDouble(results[0].GetProperty("latitude")), GetSafeDouble(results[0].GetProperty("longitude")));
-			_coordCache[cacheKey] = fallbackRes;
-			return fallbackRes;
+
+			string trimmedCity = city.Trim();
+			var (geoDoc, geoJson) = await FetchGeoDocAsync(trimmedCity);
+			try
+			{
+				if (!geoDoc.RootElement.TryGetProperty("results", out JsonElement results) || results.GetArrayLength() == 0)
+				{
+					string cleanedCity = CleanCityForGeocoding(trimmedCity);
+					if (!string.IsNullOrWhiteSpace(cleanedCity) && !cleanedCity.Equals(trimmedCity, StringComparison.OrdinalIgnoreCase))
+					{
+						geoDoc.Dispose();
+						(geoDoc, geoJson) = await FetchGeoDocAsync(cleanedCity);
+					}
+				}
+
+				if (!geoDoc.RootElement.TryGetProperty("results", out results) || results.GetArrayLength() == 0)
+				{
+					string snippet = geoJson.Length > 200 ? geoJson[..200] : geoJson;
+					App.LogDiagnostic("WeatherService.GetCoordinatesAsync", $"No Open-Meteo geocoding results for City='{city}', State='{state}', Country='{country}'. Response='{snippet}'");
+					return null;
+				}
+
+				string cUpper = country.ToUpperInvariant();
+				string expectedCountryCode = cUpper switch
+				{
+					"USA" or "UNITED STATES" or "US" => "US",
+					"CANADA" or "CA" => "CA",
+					"UK" or "UNITED KINGDOM" or "GB" => "GB",
+					"AUSTRALIA" or "AU" => "AU",
+					"NEW ZEALAND" or "NZ" => "NZ",
+					_ => ""
+				};
+
+				string normalizedExpectedState = string.IsNullOrWhiteSpace(state) ? "" : NormalizeLocationName(state);
+
+				foreach (JsonElement element in results.EnumerateArray())
+				{
+					bool stateMatches = true;
+					bool countryMatches = true;
+
+					if (!string.IsNullOrWhiteSpace(normalizedExpectedState))
+					{
+						if (element.TryGetProperty("admin1", out JsonElement admin1Obj) && admin1Obj.ValueKind == JsonValueKind.String)
+						{
+							string normalizedAdmin1 = NormalizeLocationName(admin1Obj.GetString() ?? "");
+							stateMatches = normalizedAdmin1.Equals(normalizedExpectedState, StringComparison.OrdinalIgnoreCase);
+						}
+						else stateMatches = false;
+					}
+
+					if (!string.IsNullOrWhiteSpace(expectedCountryCode))
+					{
+						if (element.TryGetProperty("country_code", out JsonElement countryObj) && countryObj.ValueKind == JsonValueKind.String)
+						{
+							string? countryCode = countryObj.GetString();
+							countryMatches = countryCode?.Equals(expectedCountryCode, StringComparison.OrdinalIgnoreCase) == true;
+						}
+						else countryMatches = false;
+					}
+
+					if (stateMatches && countryMatches)
+					{
+						var res = (GetSafeDouble(element.GetProperty("latitude")), GetSafeDouble(element.GetProperty("longitude")));
+						_coordCache[cacheKey] = res;
+						return res;
+					}
+				}
+
+				if (!string.IsNullOrWhiteSpace(normalizedExpectedState) || !string.IsNullOrWhiteSpace(expectedCountryCode))
+				{
+					App.LogDiagnostic("WeatherService.GetCoordinatesAsync", $"Open-Meteo returned {results.GetArrayLength()} result(s) for City='{city}', but none matched State='{state}', Country='{country}'.");
+					return null;
+				}
+
+				var fallbackRes = (GetSafeDouble(results[0].GetProperty("latitude")), GetSafeDouble(results[0].GetProperty("longitude")));
+				_coordCache[cacheKey] = fallbackRes;
+				return fallbackRes;
+			}
+			finally
+			{
+				geoDoc.Dispose();
+			}
 		}
 
 		public static async Task<List<CachedWeatherData>> GetWeatherBulkAsync(List<double> lats, List<double> lons, List<string> displayCities, bool useCelsius, bool use24HourClock, bool flipWindArrow, bool useKph, bool useCm)
@@ -389,7 +468,14 @@ namespace SkyPeek
 						int i = 0;
 						foreach (JsonElement node in doc.RootElement.EnumerateArray())
 						{
-							if (node.TryGetProperty("error", out _)) { results.Add(null!); i++; continue; }
+							if (node.TryGetProperty("error", out _))
+							{
+								string reason = node.TryGetProperty("reason", out JsonElement reasonEl) ? reasonEl.GetString() ?? "Unknown" : "Unknown";
+								App.LogDiagnostic("WeatherService.GetWeatherBulkAsync", $"Open-Meteo returned error payload for '{displayCities[i]}': {reason}");
+								results.Add(null!);
+								i++;
+								continue;
+							}
 							JsonElement? aqiNode = null;
 							if (aqiDoc != null && aqiDoc.RootElement.ValueKind == JsonValueKind.Array && i < aqiDoc.RootElement.GetArrayLength())
 							{
@@ -405,6 +491,11 @@ namespace SkyPeek
 						{
 							JsonElement? aqiNode = (aqiDoc != null && !aqiDoc.RootElement.TryGetProperty("error", out _)) ? aqiDoc.RootElement : null;
 							results.Add(ParseWeatherData(doc.RootElement, lats[0], lons[0], displayCities[0], use24HourClock, flipWindArrow, useKph, useCm, aqiNode));
+						}
+						else
+						{
+							string reason = doc.RootElement.TryGetProperty("reason", out JsonElement reasonEl) ? reasonEl.GetString() ?? "Unknown" : "Unknown";
+							App.LogDiagnostic("WeatherService.GetWeatherBulkAsync", $"Open-Meteo returned error payload for '{displayCities[0]}': {reason}");
 						}
 					}
 				}

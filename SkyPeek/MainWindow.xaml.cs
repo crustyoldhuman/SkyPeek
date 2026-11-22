@@ -234,6 +234,80 @@ namespace SkyPeek
 			_slideoutInstance?.ViewModel.ConnectionFailureType = NetworkFailureType.None;
 		}
 
+		private static void EnsureValidHomeLocation()
+		{
+			bool repaired = false;
+
+			lock (AppConfig.Current.ConfigLock)
+			{
+				if (AppConfig.Current.SavedLocations == null)
+				{
+					AppConfig.Current.SavedLocations = [];
+					repaired = true;
+				}
+
+				if (AppConfig.Current.SavedLocations.RemoveAll(l => l == null || string.IsNullOrWhiteSpace(l.City)) > 0)
+				{
+					repaired = true;
+				}
+
+				AppConfig.Current.City = AppConfig.Current.City?.Trim() ?? "";
+				AppConfig.Current.State = AppConfig.Current.State?.Trim() ?? "";
+				AppConfig.Current.Country = AppConfig.Current.Country?.Trim() ?? "";
+
+				if (string.IsNullOrWhiteSpace(AppConfig.Current.City))
+				{
+					if (AppConfig.Current.SavedLocations.Count > 0)
+					{
+						var fallback = AppConfig.Current.SavedLocations[0];
+						AppConfig.Current.City = fallback.City;
+						AppConfig.Current.State = fallback.State;
+						AppConfig.Current.Country = fallback.Country;
+					}
+					else
+					{
+						AppConfig.Current.City = "Chicago";
+						AppConfig.Current.State = "Illinois";
+						AppConfig.Current.Country = "USA";
+					}
+					repaired = true;
+				}
+
+				var existingHome = AppConfig.Current.SavedLocations.Find(l =>
+					l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) &&
+					l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase) &&
+					l.Country.Equals(AppConfig.Current.Country, System.StringComparison.OrdinalIgnoreCase))
+					?? AppConfig.Current.SavedLocations.Find(l =>
+					l.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) &&
+					l.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase));
+
+				if (existingHome == null)
+				{
+					AppConfig.Current.SavedLocations.Add(new SavedLocation
+					{
+						City = AppConfig.Current.City,
+						State = AppConfig.Current.State,
+						Country = AppConfig.Current.Country
+					});
+					repaired = true;
+				}
+				else if (AppConfig.Current.City != existingHome.City ||
+					AppConfig.Current.State != existingHome.State ||
+					AppConfig.Current.Country != existingHome.Country)
+				{
+					AppConfig.Current.City = existingHome.City;
+					AppConfig.Current.State = existingHome.State;
+					AppConfig.Current.Country = existingHome.Country;
+					repaired = true;
+				}
+			}
+
+			if (repaired)
+			{
+				SettingsManager.Save();
+			}
+		}
+
 		public async System.Threading.Tasks.Task RefreshAllLocationsCacheAsync(bool forceRefresh = false, [System.Runtime.CompilerServices.CallerMemberName] string _2 = "")
 		{
 
@@ -248,13 +322,11 @@ namespace SkyPeek
 
 			try
 			{
+				EnsureValidHomeLocation();
+
 				System.Collections.Generic.List<SavedLocation> currentLocations;
 				lock (AppConfig.Current.ConfigLock)
 				{
-					if (AppConfig.Current.SavedLocations.Count == 0 && !string.IsNullOrEmpty(AppConfig.Current.City))
-					{
-						AppConfig.Current.SavedLocations.Add(new SavedLocation { City = AppConfig.Current.City, State = AppConfig.Current.State, Country = AppConfig.Current.Country });
-					}
 					currentLocations = [.. AppConfig.Current.SavedLocations];
 				}
 
@@ -356,20 +428,8 @@ namespace SkyPeek
 						}
 						else if (isHome)
 						{
-							if (AppConfig.Current.WeatherCache.TryGetValue(key, out var oldData))
-								ApplyWeatherToUI(oldData, key, false);
-							else if (_slideoutInstance != null)
-							{
-								Application.Current.Dispatcher.Invoke(() => {
-									_slideoutInstance.ViewModel.IsLoading = false;
-									_slideoutInstance.LoadingView.Opacity = 0.0;
-									_slideoutInstance.LoadingView.IsHitTestVisible = false;
-									_slideoutInstance.ContentContainer.Opacity = 1.0;
-									_slideoutInstance.ContentContainer.IsHitTestVisible = true;
-									_slideoutInstance.TabArea.Opacity = 1.0;
-									_slideoutInstance.TabArea.IsHitTestVisible = true;
-								});
-							}
+							App.LogDiagnostic("RefreshAllLocationsCacheAsync", $"Bulk weather result missing or null for home location '{loc.City}, {loc.State}'.");
+							_ = HandleFetchFailureAsync(loc.City, loc.State);
 						}
 					}
 				}
@@ -415,11 +475,8 @@ namespace SkyPeek
 
 			NetworkFailureType failureType = ClassifyNetworkFailure(apiException, pingException, pingSucceeded, hasLocalInterface);
 
-			if (failureType == NetworkFailureType.FirewallOrAntivirusBlocked)
-			{
-				App.LogDiagnostic("NetworkFailureClassification",
-					$"Flagged as FirewallOrAntivirusBlocked for {city}, {state} (HasLocalInterface={hasLocalInterface}, PingSucceeded={pingSucceeded}, ApiException={apiException?.GetType().Name ?? "None"}, PingException={pingException?.GetType().Name ?? "None"})");
-			}
+			App.LogDiagnostic("NetworkFailureClassification",
+				$"Classified as {failureType} for '{city}', '{state}' (HasLocalInterface={hasLocalInterface}, PingSucceeded={pingSucceeded}, ApiException={apiException?.GetType().Name ?? "None"}, PingException={pingException?.GetType().Name ?? "None"})");
 
 			Application.Current.Dispatcher.Invoke(() =>
 			{
@@ -524,13 +581,7 @@ namespace SkyPeek
 				}
 			}
 
-			lock (AppConfig.Current.ConfigLock)
-			{
-				if (AppConfig.Current.SavedLocations.Count == 0)
-				{
-					AppConfig.Current.SavedLocations.Add(new SavedLocation { City = AppConfig.Current.City, State = AppConfig.Current.State, Country = AppConfig.Current.Country });
-				}
-			}
+			EnsureValidHomeLocation();
 
 			if (_slideoutInstance is not null)
 			{
@@ -626,10 +677,41 @@ namespace SkyPeek
 
 				var ipLoc = await WeatherService.GetIpLocationAsync();
 
+				SavedLocation? winLoc;
 				lock (AppConfig.Current.ConfigLock)
 				{
-					var winLoc = AppConfig.Current.SavedLocations.Find(l => l.IsWindowsLocation);
-					if (winLoc != null)
+					winLoc = AppConfig.Current.SavedLocations.Find(l => l.IsWindowsLocation);
+				}
+
+				bool winLocValid = false;
+				if (winLoc != null && !string.IsNullOrWhiteSpace(winLoc.City))
+				{
+					try
+					{
+						winLocValid = (await WeatherService.GetCoordinatesAsync(winLoc.City, winLoc.State, winLoc.Country)) != null;
+					}
+					catch (System.Exception ex)
+					{
+						App.LogCrash(ex, "PerformInitialBootSequenceAsync WinLoc Validation Failure");
+					}
+				}
+
+				bool ipLocValid = false;
+				if (!winLocValid && ipLoc.HasValue && !string.IsNullOrWhiteSpace(ipLoc.Value.City))
+				{
+					try
+					{
+						ipLocValid = (await WeatherService.GetCoordinatesAsync(ipLoc.Value.City, ipLoc.Value.State, ipLoc.Value.Country)) != null;
+					}
+					catch (System.Exception ex)
+					{
+						App.LogCrash(ex, "PerformInitialBootSequenceAsync IpLoc Validation Failure");
+					}
+				}
+
+				lock (AppConfig.Current.ConfigLock)
+				{
+					if (winLoc != null && winLocValid)
 					{
 						AppConfig.Current.SavedLocations.RemoveAll(l => l.City == "Chicago" && l.State == "Illinois" && !l.IsWindowsLocation);
 						AppConfig.Current.City = winLoc.City;
@@ -638,7 +720,12 @@ namespace SkyPeek
 					}
 					else
 					{
-						if (ipLoc.HasValue)
+						if (winLoc != null && winLoc.AddedByGps)
+						{
+							AppConfig.Current.SavedLocations.Remove(winLoc);
+						}
+
+						if (ipLocValid && ipLoc.HasValue)
 						{
 							AppConfig.Current.SavedLocations.RemoveAll(l => l.City == "Chicago" && l.State == "Illinois");
 							AppConfig.Current.SavedLocations.Add(new SavedLocation { City = ipLoc.Value.City, State = ipLoc.Value.State, Country = ipLoc.Value.Country });
@@ -646,8 +733,13 @@ namespace SkyPeek
 							AppConfig.Current.State = ipLoc.Value.State;
 							AppConfig.Current.Country = ipLoc.Value.Country;
 						}
+						else if (winLoc != null || ipLoc.HasValue)
+						{
+							App.LogDiagnostic("PerformInitialBootSequenceAsync", $"Detected location could not be geocoded (WinLoc='{winLoc?.City}, {winLoc?.State}', IpLoc='{ipLoc?.City}, {ipLoc?.State}'); retaining fallback home location.");
+						}
 					}
 				}
+				EnsureValidHomeLocation();
 				SettingsManager.Save();
 
 				if (_slideoutInstance != null)
@@ -1408,7 +1500,7 @@ namespace SkyPeek
 				string lon = position.Coordinate.Point.Position.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
 				var geoResult = await WeatherService.GetReverseGeocodeAsync(lat, lon);
-				if (geoResult.HasValue)
+				if (geoResult.HasValue && !string.IsNullOrWhiteSpace(geoResult.Value.City))
 				{
 					string locCity = geoResult.Value.City;
 					string locState = geoResult.Value.State;
@@ -1421,7 +1513,15 @@ namespace SkyPeek
 						var oldGps = AppConfig.Current.SavedLocations.Find(l => l.AddedByGps);
 						if (oldGps != null && (!oldGps.City.Equals(locCity, System.StringComparison.OrdinalIgnoreCase) || (!string.IsNullOrEmpty(oldGps.State) && !string.IsNullOrEmpty(locState) && !oldGps.State.Equals(locState, System.StringComparison.OrdinalIgnoreCase))))
 						{
+							bool oldGpsWasHome = oldGps.City.Equals(AppConfig.Current.City, System.StringComparison.OrdinalIgnoreCase) &&
+												 oldGps.State.Equals(AppConfig.Current.State, System.StringComparison.OrdinalIgnoreCase);
 							AppConfig.Current.SavedLocations.Remove(oldGps);
+							if (oldGpsWasHome)
+							{
+								AppConfig.Current.City = locCity;
+								AppConfig.Current.State = locState;
+								AppConfig.Current.Country = locCountry;
+							}
 							listChanged = true;
 						}
 
@@ -1518,7 +1618,12 @@ namespace SkyPeek
 			{
 				var bulkData = await WeatherService.GetWeatherBulkAsync([latValInit], [lonValInit], [displayCity], AppConfig.Current.UseCelsius, AppConfig.Current.Use24HourClock, AppConfig.Current.FlipWindArrow, AppConfig.Current.UseKph, AppConfig.Current.UseCm);
 				var data = bulkData.FirstOrDefault();
-				if (data == null) return null;
+				if (data == null)
+				{
+					App.LogDiagnostic("FetchAndUpdateTemperature", $"Bulk weather result missing or null for '{displayCity}, {state}'.");
+					_ = HandleFetchFailureAsync(displayCity, state);
+					return null;
+				}
 
 				SavedLocation? activeLoc;
 				lock (AppConfig.Current.ConfigLock)
